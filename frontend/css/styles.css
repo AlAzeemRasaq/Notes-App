@@ -1,0 +1,38 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+  color: white;
+  margin: 0;
+  padding: 20px;
+}
+
+.app {
+  max-width: 800px;
+  margin: auto;
+}
+
+.new-note input,
+.new-note textarea {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+}
+
+button {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: #4f6bed;
+  color: white;
+  cursor: pointer;
+}
+
+.note-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 15px;
+  border-radius: 16px;
+  margin-top: 15px;
+}
