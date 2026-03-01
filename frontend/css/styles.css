@@ -1,38 +1,110 @@
-body {
-  font-family: "Segoe UI", sans-serif;
-  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
-  color: white;
+/* Reset */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  background-color: #202124;
+  color: #e8eaed;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #171717;
+  padding: 20px;
+  height: 100vh;
+}
+
+.sidebar nav a {
+  display: block;
+  color: #e8eaed;
+  text-decoration: none;
+  padding: 10px 0;
+  border-radius: 6px;
+}
+
+.sidebar nav a:hover {
+  background: #2a2a2a;
+}
+
+/* Main */
+.main-container {
+  flex: 1;
   padding: 20px;
 }
 
-.app {
-  max-width: 800px;
-  margin: auto;
+/* Topbar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
-.new-note input,
-.new-note textarea {
+.topbar input {
+  width: 50%;
+}
+
+/* Shared Inputs */
+input, textarea {
   width: 100%;
-  margin-bottom: 10px;
   padding: 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: none;
+  background: #303134;
+  color: white;
+  margin-bottom: 10px;
 }
 
+/* Shared Buttons */
 button {
-  padding: 10px 20px;
-  border-radius: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
   border: none;
   background: #4f6bed;
   color: white;
   cursor: pointer;
 }
 
-.note-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+button:hover {
+  opacity: 0.85;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Create Note */
+.create-note {
+  background: #303134;
   padding: 15px;
-  border-radius: 16px;
-  margin-top: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* Notes Grid */
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.note-card {
+  background: #303134;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* Auth pages */
+.auth-container {
+  max-width: 400px;
+  margin: 100px auto;
+  background: #303134;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
 }
