@@ -1,26 +1,21 @@
-const API_URL = "http://127.0.0.1:5000/api";
+const API_BASE = "http://127.0.0.1:5000/api";
 
-async function fetchNotes() {
+async function apiRequest(endpoint, method = "GET", body = null) {
   const token = localStorage.getItem("token");
 
-  const res = await fetch(`${API_URL}/notes/`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null
   });
 
-  return await res.json();
-}
-
-async function addNote(note) {
-  const token = localStorage.getItem("token");
-
-  await fetch(`${API_URL}/notes/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify(note)
-  });
+  return res.json();
 }
