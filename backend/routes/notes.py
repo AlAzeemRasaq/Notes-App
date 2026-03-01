@@ -1,21 +1,24 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from bson.objectid import ObjectId
-from app import mongo
-from datetime import datetime
+
+# ✅ FIX: Import from extensions, NOT from app
+from extensions import mongo
 
 notes_bp = Blueprint("notes", __name__)
+
 
 @notes_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_notes():
     user_id = get_jwt_identity()
+
     notes = list(mongo.db.notes.find({"user_id": user_id}))
     
+    # Convert ObjectId to string
     for note in notes:
         note["_id"] = str(note["_id"])
-    
-    return jsonify(notes)
+
+    return jsonify(notes), 200
 
 
 @notes_bp.route("/", methods=["POST"])
@@ -24,14 +27,12 @@ def create_note():
     user_id = get_jwt_identity()
     data = request.json
 
-    note = {
-        "user_id": user_id,
+    new_note = {
         "title": data.get("title", ""),
         "content": data.get("content", ""),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "user_id": user_id
     }
 
-    note_id = mongo.db.notes.insert_one(note).inserted_id
+    mongo.db.notes.insert_one(new_note)
 
-    return jsonify({"id": str(note_id)}), 201
+    return jsonify({"message": "Note created"}), 201
