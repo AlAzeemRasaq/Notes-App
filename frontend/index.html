@@ -1,23 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Notes App</title>
-  <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <title>Notes App</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="app">
-    <h1>My Notes</h1>
-    
-    <div class="new-note">
-      <input id="title" placeholder="Title">
-      <textarea id="content" placeholder="Write your note..."></textarea>
-      <button onclick="createNote()">Add Note</button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <h2>Notes</h2>
+        <nav>
+            <a href="#">All Notes</a>
+            <a href="#">Archived</a>
+            <a href="#">Trash</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-container">
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <input type="text" placeholder="Search notes...">
+
+            <div class="auth-buttons">
+                <button id="loginBtn">Login</button>
+                <button id="registerBtn">Sign Up</button>
+                <button id="logoutBtn" class="hidden">Logout</button>
+            </div>
+        </header>
+
+        <!-- Create Note -->
+        <div class="create-note">
+            <input type="text" id="noteTitle" placeholder="Title">
+            <textarea id="noteContent" placeholder="Take a note..."></textarea>
+            <button id="addNoteBtn">Add Note</button>
+        </div>
+
+        <!-- Notes Grid -->
+        <div id="notesContainer" class="notes-grid"></div>
+
     </div>
 
-    <div id="notes-container"></div>
-  </div>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
 
-  <script src="js/api.js"></script>
-  <script src="js/main.js"></script>
 </body>
 </html>
