@@ -1,21 +1,71 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Login</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
   <div class="auth-container">
     <h2>Login</h2>
 
-    <input id="email" type="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-
-    <button onclick="login()">Login</button>
+    <!-- Login form -->
+    <form id="loginForm">
+      <input id="email" type="email" placeholder="Email" required
+             pattern="^[^@\s]+@[^@\s]+\.[^@\s]+$"
+             title="Email must contain an @ and a ." />
+      <input id="password" type="password" placeholder="Password" required
+             minlength="8"
+             title="Password must be at least 8 characters long" />
+      <button type="submit">Login</button>
+    </form>
 
     <p>No account? <a href="register.html">Register</a></p>
+
+    <!-- Message area for success/error -->
+    <div id="message"></div>
   </div>
 
-  <script src="js/auth.js"></script>
+  <script>
+    async function login() {
+      // Get input values
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        // Send POST request to Flask backend
+        const res = await fetch('/api/auth/login', {  // <-- matches blueprint URL
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+        console.log(res.status, data);
+
+        if (res.status === 200) {
+          // Store JWT token for future requests
+          localStorage.setItem('token', data.token);
+
+          // Redirect to home page after successful login
+          window.location.href = "index.html";
+        } else {
+          // Show error message
+          document.getElementById('message').textContent = data.message;
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        document.getElementById('message').textContent = "An error occurred.";
+      }
+    }
+
+    // Attach submit listener to form
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault(); // prevent page reload
+      login();             // call login function
+    });
+  </script>
 </body>
+
 </html>
