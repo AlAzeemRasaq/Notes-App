@@ -1,22 +1,73 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Register</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
   <div class="auth-container">
     <h2>Create Account</h2>
 
-    <input id="username" placeholder="Username">
-    <input id="email" type="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-
-    <button onclick="register()">Sign Up</button>
+    <!-- Registration form -->
+    <form id="registerForm">
+      <input id="username" placeholder="Username" required>
+      <input id="email" type="email" placeholder="Email" required
+             pattern="^[^@\s]+@[^@\s]+\.[^@\s]+$"
+             title="Email must contain an @ and a ." />
+      <input id="password" type="password" placeholder="Password" required
+             minlength="8"
+             title="Password must be at least 8 characters long" />
+      <button type="submit">Sign Up</button>
+    </form>
 
     <p>Already have an account? <a href="login.html">Login</a></p>
+
+    <!-- Message area for success/error -->
+    <div id="message"></div>
   </div>
 
-  <script src="js/auth.js"></script>
+  <script>
+    async function register() {
+      // Get input values
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        // Send POST request to Flask backend
+        const res = await fetch('/api/auth/register', {  // <-- matches blueprint URL
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await res.json();
+
+        // Show message from backend (success or error)
+        document.getElementById('message').textContent = data.message;
+        console.log(res.status, data);
+
+        if (res.status === 201) {
+          // Clear the form
+          document.getElementById('registerForm').reset();
+
+          // Redirect to home page after successful registration
+          window.location.href = "index.html";
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        document.getElementById('message').textContent = "An error occurred.";
+      }
+    }
+
+    // Attach submit listener to form
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+      e.preventDefault(); // prevent page reload
+      register();          // call register function
+    });
+  </script>
 </body>
+
 </html>
