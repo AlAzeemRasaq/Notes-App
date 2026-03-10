@@ -1,0 +1,7 @@
+{
+  "_id": "ObjectId",
+  "user_id": "user_id_from_jwt",
+  "title": "Meeting Notes",
+  "content": "Discuss project timeline",
+  "updated_at": "2026-03-10T11:30:00"
+}
