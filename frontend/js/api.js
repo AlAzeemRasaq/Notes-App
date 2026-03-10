@@ -11,11 +11,23 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : null
-  });
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: method,
+      headers: headers,
+      body: body ? JSON.stringify(body) : null
+    });
 
-  return res.json();
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("API ERROR:", text);
+      throw new Error("API request failed");
+    }
+
+    // Return JSON safely
+    return res.json();
+  } catch (err) {
+    console.error("API request error:", err);
+    return { message: "Server error" };
+  }
 }
