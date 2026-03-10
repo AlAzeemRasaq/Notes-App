@@ -12,8 +12,6 @@
     <!-- ================= Sidebar ================= -->
     <aside class="sidebar">
         <h2>Notes</h2>
-
-        <!-- Navigation (future functionality) -->
         <nav>
             <a href="#">All Notes</a>
             <a href="#">Archived</a>
@@ -21,102 +19,131 @@
         </nav>
     </aside>
 
-
     <!-- ================= Main Content ================= -->
     <div class="main-container">
 
-        <!-- ================= Top Bar ================= -->
+        <!-- Top Bar -->
         <header class="topbar">
-
-            <!-- Search (not implemented yet) -->
             <input type="text" placeholder="Search notes...">
-
-            <!-- Authentication Buttons -->
             <div class="auth-buttons">
-
-                <!-- Visible when logged out -->
                 <button id="loginBtn">Login</button>
                 <button id="registerBtn">Sign Up</button>
-
-                <!-- Visible when logged in -->
                 <button id="logoutBtn" class="hidden">Logout</button>
-
             </div>
-
         </header>
 
-
-        <!-- ================= Create Note ================= -->
+        <!-- Create Note -->
         <div class="create-note">
-
-            <!-- Title input -->
             <input type="text" id="noteTitle" placeholder="Title">
 
-            <!-- Rich text toolbar -->
+            <!-- Toolbar -->
             <div class="toolbar">
                 <button type="button" onclick="formatText('bold')"><b>B</b></button>
                 <button type="button" onclick="formatText('italic')"><i>I</i></button>
                 <button type="button" onclick="formatText('underline')"><u>U</u></button>
                 <button type="button" onclick="formatText('createLink')">Link</button>
-                <button type="button" onclick="insertImage()">Image</button>
+                <button type="button" onclick="triggerImageUpload()">Image</button>
                 <button type="button" onclick="insertEmbed()">Embed</button>
             </div>
 
             <!-- Rich text editor -->
             <div id="noteContent" class="rich-editor" contenteditable="true" placeholder="Take a note..."></div>
 
-            <!-- Button that triggers note creation -->
-            <button id="addNoteBtn">
-                Add Note
-            </button>
+            <!-- Hidden image uploader -->
+            <input type="file" id="imageUploader" accept="image/*" style="display:none">
 
+            <button id="addNoteBtn">Add Note</button>
         </div>
 
-        <!-- ================= Notes Grid ================= -->
-        <!-- Notes loaded from MongoDB will appear here -->
-        <div
-            id="notesContainer"
-            class="notes-grid"
-        ></div>
-
+        <!-- Notes Grid -->
+        <div id="notesContainer" class="notes-grid"></div>
     </div>
 
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
 
-<!-- ================= Scripts ================= -->
-
-<!-- Handles API calls -->
-<script src="js/api.js"></script>
-
-<!-- Handles login/logout -->
-<script src="js/auth.js"></script>
-
-<!-- Handles notes CRUD -->
-<script src="js/main.js"></script>
-
-<script>
-    // ================= Rich Text Functions =================
-    function formatText(command) {
-        if(command === 'createLink') {
-            const url = prompt('Enter the URL');
-            if(url) document.execCommand(command, false, url);
-        } else {
-            document.execCommand(command, false, null);
+    <script>
+        // ================= Rich Text Functions =================
+        function formatText(command) {
+            if (command === 'createLink') {
+                const url = prompt('Enter the URL');
+                if (url) {
+                    let finalUrl = url.startsWith('http') ? url : 'https://' + url;
+                    document.execCommand(command, false, finalUrl);
+                }
+            } else {
+                document.execCommand(command, false, null);
+            }
         }
-    }
 
-    function insertImage() {
-        const url = prompt('Enter image URL');
-        if(url) document.execCommand('insertImage', false, url);
-    }
-
-    function insertEmbed() {
-        const embedCode = prompt('Paste embed HTML (like iframe)');
-        if(embedCode) {
-            const editor = document.getElementById('noteContent');
-            editor.innerHTML += embedCode;
+        function triggerImageUpload() {
+            document.getElementById('imageUploader').click();
         }
-    }
-</script>
+
+        document.getElementById('imageUploader').addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                document.getElementById('noteContent').appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function insertEmbed() {
+            const embedCode = prompt('Paste embed HTML (like iframe)');
+            if (embedCode) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(embedCode, 'text/html');
+                const iframe = doc.querySelector('iframe');
+                if (iframe) {
+                    document.getElementById('noteContent').appendChild(iframe);
+                } else {
+                    alert('Invalid embed code');
+                }
+            }
+        }
+
+        // ================= Drag & Drop =================
+        const editor = document.getElementById('noteContent');
+        editor.addEventListener('dragover', e => e.preventDefault());
+        editor.addEventListener('drop', e => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                editor.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // ================= Paste Handling =================
+        editor.addEventListener('paste', e => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        editor.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+    </script>
 
 </body>
 </html>
