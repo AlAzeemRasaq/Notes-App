@@ -50,17 +50,20 @@
         <div class="create-note">
 
             <!-- Title input -->
-            <input
-                type="text"
-                id="noteTitle"
-                placeholder="Title"
-            >
+            <input type="text" id="noteTitle" placeholder="Title">
 
-            <!-- Note content -->
-            <textarea
-                id="noteContent"
-                placeholder="Take a note..."
-            ></textarea>
+            <!-- Rich text toolbar -->
+            <div class="toolbar">
+                <button type="button" onclick="formatText('bold')"><b>B</b></button>
+                <button type="button" onclick="formatText('italic')"><i>I</i></button>
+                <button type="button" onclick="formatText('underline')"><u>U</u></button>
+                <button type="button" onclick="formatText('createLink')">Link</button>
+                <button type="button" onclick="insertImage()">Image</button>
+                <button type="button" onclick="insertEmbed()">Embed</button>
+            </div>
+
+            <!-- Rich text editor -->
+            <div id="noteContent" class="rich-editor" contenteditable="true" placeholder="Take a note..."></div>
 
             <!-- Button that triggers note creation -->
             <button id="addNoteBtn">
@@ -68,7 +71,6 @@
             </button>
 
         </div>
-
 
         <!-- ================= Notes Grid ================= -->
         <!-- Notes loaded from MongoDB will appear here -->
@@ -91,6 +93,30 @@
 <!-- Handles notes CRUD -->
 <script src="js/main.js"></script>
 
-</body>
+<script>
+    // ================= Rich Text Functions =================
+    function formatText(command) {
+        if(command === 'createLink') {
+            const url = prompt('Enter the URL');
+            if(url) document.execCommand(command, false, url);
+        } else {
+            document.execCommand(command, false, null);
+        }
+    }
 
+    function insertImage() {
+        const url = prompt('Enter image URL');
+        if(url) document.execCommand('insertImage', false, url);
+    }
+
+    function insertEmbed() {
+        const embedCode = prompt('Paste embed HTML (like iframe)');
+        if(embedCode) {
+            const editor = document.getElementById('noteContent');
+            editor.innerHTML += embedCode;
+        }
+    }
+</script>
+
+</body>
 </html>
