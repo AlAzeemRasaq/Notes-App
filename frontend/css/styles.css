@@ -1,110 +1,194 @@
-/* Reset */
+/* ===== Reset ===== */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
 body {
-  display: flex;
-  background-color: #202124;
-  color: #e8eaed;
+    display: flex;
+    background-color: #202124;
+    color: #e8eaed;
 }
 
-/* Sidebar */
+/* ===== Sidebar ===== */
 .sidebar {
-  width: 220px;
-  background: #171717;
-  padding: 20px;
-  height: 100vh;
+    width: 220px;
+    background: #171717;
+    padding: 20px;
+    height: 100vh;
+}
+
+.sidebar h2 {
+    margin-bottom: 20px;
 }
 
 .sidebar nav a {
-  display: block;
-  color: #e8eaed;
-  text-decoration: none;
-  padding: 10px 0;
-  border-radius: 6px;
+    display: block;
+    color: #e8eaed;
+    text-decoration: none;
+    padding: 10px 0;
+    border-radius: 6px;
 }
 
 .sidebar nav a:hover {
-  background: #2a2a2a;
+    background: #2a2a2a;
 }
 
-/* Main */
+/* ===== Main Container ===== */
 .main-container {
-  flex: 1;
-  padding: 20px;
+    flex: 1;
+    padding: 20px;
 }
 
-/* Topbar */
+/* ===== Top Bar ===== */
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .topbar input {
-  width: 50%;
+    width: 50%;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    background: #303134;
+    color: white;
 }
 
-/* Shared Inputs */
+.auth-buttons button {
+    margin-left: 10px;
+}
+
+/* ===== Shared Inputs & Buttons ===== */
 input, textarea {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: #303134;
-  color: white;
-  margin-bottom: 10px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #303134;
+    color: white;
+    margin-bottom: 10px;
 }
 
-/* Shared Buttons */
 button {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: none;
-  background: #4f6bed;
-  color: white;
-  cursor: pointer;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: #4f6bed;
+    color: white;
+    cursor: pointer;
 }
 
 button:hover {
-  opacity: 0.85;
+    opacity: 0.85;
 }
 
 .hidden {
-  display: none;
+    display: none;
 }
 
-/* Create Note */
+/* ===== Create Note ===== */
 .create-note {
-  background: #303134;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
+    background: #303134;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
 }
 
-/* Notes Grid */
+/* Title */
+#noteTitle {
+    width: 100%;
+    font-size: 1.8rem;
+    font-weight: bold;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+/* Toolbar */
+.toolbar button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.toolbar button:hover {
+    background-color: #5a78ff;
+}
+
+/* Rich Editor */
+.rich-editor {
+    width: 100%;
+    min-height: 250px;
+    max-height: 500px;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    overflow-y: auto;
+    background: white;
+    color: black;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    cursor: text;
+}
+
+.rich-editor:focus {
+    outline: 2px solid #6666ff;
+}
+
+/* Limit image size in editor while preserving full original size */
+.rich-editor img {
+    max-width: 500px;
+    max-height: 500px;
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 5px 0;
+}
+
+/* Limit iframe size in editor */
+.rich-editor iframe {
+    max-width: 500px;
+    max-height: 500px;
+    width: 100%;
+    height: auto;
+    margin: 5px 0;
+}
+
+/* ===== Notes Grid ===== */
 .notes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
 }
 
 .note-card {
-  background: #303134;
-  padding: 15px;
-  border-radius: 10px;
+    background: #2a2a40;
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    word-wrap: break-word;
 }
 
-/* Auth pages */
-.auth-container {
-  max-width: 400px;
-  margin: 100px auto;
-  background: #303134;
-  padding: 30px;
-  border-radius: 12px;
-  text-align: center;
+/* Images and embeds inside notes */
+.note-card .note-content img {
+    max-width: 500px;
+    max-height: 500px;
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 5px 0;
+}
+
+.note-card .note-content iframe {
+    max-width: 500px;
+    max-height: 500px;
+    width: 100%;
+    height: auto;
+    margin: 5px 0;
 }
