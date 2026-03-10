@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Notes App</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
 
-    <!-- Sidebar -->
+    <!-- ================= Sidebar ================= -->
     <aside class="sidebar">
         <h2>Notes</h2>
+
+        <!-- Navigation (future functionality) -->
         <nav>
             <a href="#">All Notes</a>
             <a href="#">Archived</a>
@@ -17,35 +21,76 @@
         </nav>
     </aside>
 
-    <!-- Main Content -->
+
+    <!-- ================= Main Content ================= -->
     <div class="main-container">
 
-        <!-- Top Bar -->
+        <!-- ================= Top Bar ================= -->
         <header class="topbar">
+
+            <!-- Search (not implemented yet) -->
             <input type="text" placeholder="Search notes...">
 
+            <!-- Authentication Buttons -->
             <div class="auth-buttons">
+
+                <!-- Visible when logged out -->
                 <button id="loginBtn">Login</button>
                 <button id="registerBtn">Sign Up</button>
+
+                <!-- Visible when logged in -->
                 <button id="logoutBtn" class="hidden">Logout</button>
+
             </div>
+
         </header>
 
-        <!-- Create Note -->
+
+        <!-- ================= Create Note ================= -->
         <div class="create-note">
-            <input type="text" id="noteTitle" placeholder="Title">
-            <textarea id="noteContent" placeholder="Take a note..."></textarea>
-            <button id="addNoteBtn">Add Note</button>
+
+            <!-- Title input -->
+            <input
+                type="text"
+                id="noteTitle"
+                placeholder="Title"
+            >
+
+            <!-- Note content -->
+            <textarea
+                id="noteContent"
+                placeholder="Take a note..."
+            ></textarea>
+
+            <!-- Button that triggers note creation -->
+            <button id="addNoteBtn">
+                Add Note
+            </button>
+
         </div>
 
-        <!-- Notes Grid -->
-        <div id="notesContainer" class="notes-grid"></div>
+
+        <!-- ================= Notes Grid ================= -->
+        <!-- Notes loaded from MongoDB will appear here -->
+        <div
+            id="notesContainer"
+            class="notes-grid"
+        ></div>
 
     </div>
 
+
+<!-- ================= Scripts ================= -->
+
+<!-- Handles API calls -->
 <script src="js/api.js"></script>
+
+<!-- Handles login/logout -->
 <script src="js/auth.js"></script>
+
+<!-- Handles notes CRUD -->
 <script src="js/main.js"></script>
 
 </body>
+
 </html>
