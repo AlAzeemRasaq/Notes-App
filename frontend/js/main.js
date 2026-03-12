@@ -22,7 +22,7 @@ if (!token) {
 }
 
 // =========================
-// Load all notes
+// Load all notes for current user
 // =========================
 async function loadNotes() {
   console.log("Loading notes...");
@@ -59,6 +59,7 @@ async function saveNote() {
   const title = titleInput.value.trim();
   const content = contentInput.innerHTML.trim();
 
+  // Prevent empty notes
   if (!title && !content) return;
 
   try {
@@ -116,7 +117,6 @@ async function editNote(id) {
   try {
     const notes = await apiRequest("/notes");
     const note = notes.find(n => n._id === id);
-
     if (!note) return;
 
     editingNoteId = id;
