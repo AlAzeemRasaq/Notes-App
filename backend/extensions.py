@@ -7,11 +7,9 @@ mongo = PyMongo()
 bcrypt = Bcrypt()
 jwt = JWTManager()
 
-
 # Helper functions to access collections cleanly
-def get_users_collection():
+def users_collection():
     return mongo.db.users
 
-
-def get_notes_collection():
+def notes_collection():
     return mongo.db.notes
