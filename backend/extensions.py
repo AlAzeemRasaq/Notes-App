@@ -2,12 +2,16 @@ from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 
-# Extensions are created here but not attached to the app yet
+# =========================
+# Create instances (not attached yet)
+# =========================
 mongo = PyMongo()
 bcrypt = Bcrypt()
 jwt = JWTManager()
 
-# Helper functions to access collections cleanly
+# =========================
+# Helper functions for collections
+# =========================
 def users_collection():
     return mongo.db.users
 
