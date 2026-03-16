@@ -6,14 +6,10 @@ const addNoteBtn = document.getElementById("addNoteBtn");
 const titleInput = document.getElementById("noteTitle");
 const contentInput = document.getElementById("noteContent");
 
-// =========================
-// Track editing note & autosave
-// =========================
 let editingNoteId = null;
-let autosaveTimer = null;
 
 // =========================
-// Redirect to login if no JWT
+// Redirect if not logged in
 // =========================
 const token = localStorage.getItem("token");
 if (!token) {
@@ -22,18 +18,18 @@ if (!token) {
 }
 
 // =========================
-// Load all notes for current user
+// Load Notes
 // =========================
 async function loadNotes() {
   console.log("Loading notes...");
+
   try {
     const notes = await apiRequest("/notes");
-    console.log("Notes loaded:", notes);
 
     notesContainer.innerHTML = "";
 
     notes.forEach(note => {
-      console.log("Rendering note:", note._id, note.title);
+
       const div = document.createElement("div");
       div.className = "note-card";
 
@@ -45,8 +41,10 @@ async function loadNotes() {
           <button onclick="deleteNote('${note._id}')">Delete</button>
         </div>
       `;
+
       notesContainer.appendChild(div);
     });
+
   } catch (err) {
     console.error("Failed to load notes:", err);
   }
@@ -56,24 +54,36 @@ async function loadNotes() {
 // Save or Update Note
 // =========================
 async function saveNote() {
-  const title = titleInput.value.trim();
-  const content = contentInput.innerHTML.trim();
 
-  // Prevent empty notes
-  if (!title && !content) return;
+  const title = (titleInput.value || "").trim();
+  const content = contentInput.innerHTML.replace(/<[^>]*>/g, "").trim();
+
+  if (!title && !content) {
+    console.log("Empty note, skipping save.");
+    return;
+  }
 
   try {
+
     if (editingNoteId) {
-      console.log(`Updating note ID: ${editingNoteId}`);
-      await apiRequest(`/notes/${editingNoteId}`, "PUT", { title, content });
+
+      await apiRequest(`/notes/${editingNoteId}`, "PUT", {
+        title,
+        content
+      });
+
     } else {
-      console.log("Creating new note...");
-      const result = await apiRequest("/notes", "POST", { title, content });
-      editingNoteId = result.id;
-      console.log("New note created with ID:", editingNoteId);
+
+      const result = await apiRequest("/notes", "POST", {
+        title,
+        content
+      });
+
+      editingNoteId = result._id;
     }
 
     await loadNotes();
+
   } catch (err) {
     console.error("Failed to save note:", err);
   }
@@ -83,19 +93,24 @@ async function saveNote() {
 // Add Note Button
 // =========================
 addNoteBtn.onclick = () => {
+
   editingNoteId = null;
-  saveNote();
+
   titleInput.value = "";
   contentInput.innerHTML = "";
+
+  titleInput.focus();
 };
 
 // =========================
 // Delete Note
 // =========================
 async function deleteNote(id) {
-  if (!confirm("Are you sure you want to delete this note?")) return;
+
+  if (!confirm("Delete this note?")) return;
 
   try {
+
     await apiRequest(`/notes/${id}`, "DELETE");
 
     if (editingNoteId === id) {
@@ -105,6 +120,7 @@ async function deleteNote(id) {
     }
 
     await loadNotes();
+
   } catch (err) {
     console.error("Failed to delete note:", err);
   }
@@ -114,34 +130,38 @@ async function deleteNote(id) {
 // Edit Note
 // =========================
 async function editNote(id) {
+
   try {
+
     const notes = await apiRequest("/notes");
     const note = notes.find(n => n._id === id);
+
     if (!note) return;
 
     editingNoteId = id;
+
     titleInput.value = note.title || "";
     contentInput.innerHTML = note.content || "";
+
     titleInput.focus();
+
   } catch (err) {
     console.error("Failed to fetch note for editing:", err);
   }
 }
 
 // =========================
-// Autosave (3s after typing)
+// Save when user clicks outside editor
 // =========================
-function triggerAutosave() {
-  clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => {
-    saveNote();
-  }, 3000);
+function handleBlurSave() {
+  console.log("Editor lost focus. Saving...");
+  saveNote();
 }
 
-titleInput.addEventListener("input", triggerAutosave);
-contentInput.addEventListener("input", triggerAutosave);
+titleInput.addEventListener("blur", handleBlurSave);
+contentInput.addEventListener("blur", handleBlurSave);
 
 // =========================
-// Initial load
+// Initial Load
 // =========================
-if (token) loadNotes();
+loadNotes();
