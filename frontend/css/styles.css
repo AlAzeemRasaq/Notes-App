@@ -10,6 +10,7 @@ body {
     display: flex;
     background-color: #202124;
     color: #e8eaed;
+    transition: all 0.3s ease;
 }
 
 /* ===== Sidebar ===== */
@@ -63,7 +64,7 @@ body {
     margin-left: 10px;
 }
 
-/* ===== Shared Inputs & Buttons ===== */
+/* ===== Shared Inputs ===== */
 input, textarea {
     width: 100%;
     padding: 10px;
@@ -74,6 +75,7 @@ input, textarea {
     margin-bottom: 10px;
 }
 
+/* ===== Buttons ===== */
 button {
     padding: 8px 14px;
     border-radius: 8px;
@@ -101,29 +103,23 @@ button:hover {
 
 /* Title */
 #noteTitle {
-    width: 100%;
     font-size: 1.8rem;
     font-weight: bold;
-    padding: 10px;
     margin-bottom: 15px;
-    border-radius: 5px;
-    box-sizing: border-box;
 }
 
 /* Toolbar */
 .toolbar button {
     margin-right: 5px;
     padding: 5px 10px;
-    cursor: pointer;
 }
 
 .toolbar button:hover {
     background-color: #5a78ff;
 }
 
-/* Rich Editor */
+/* ===== Rich Editor ===== */
 .rich-editor {
-    width: 100%;
     min-height: 250px;
     max-height: 500px;
     padding: 15px;
@@ -132,31 +128,22 @@ button:hover {
     overflow-y: auto;
     background: white;
     color: black;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    cursor: text;
 }
 
 .rich-editor:focus {
     outline: 2px solid #6666ff;
 }
 
-/* Limit image size in editor while preserving full original size */
 .rich-editor img {
     max-width: 500px;
     max-height: 500px;
-    width: auto;
-    height: auto;
     display: block;
     margin: 5px 0;
 }
 
-/* Limit iframe size in editor */
 .rich-editor iframe {
     max-width: 500px;
-    max-height: 500px;
     width: 100%;
-    height: auto;
     margin: 5px 0;
 }
 
@@ -167,28 +154,62 @@ button:hover {
     gap: 15px;
 }
 
+/* ===== Note Card ===== */
 .note-card {
     background: #2a2a40;
     padding: 15px;
     border-radius: 8px;
-    color: white;
     word-wrap: break-word;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Images and embeds inside notes */
+.note-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ===== Pinned Highlight ===== */
+.note-card.pinned {
+    border: 2px solid gold;
+}
+
+/* ===== Note Content ===== */
 .note-card .note-content img {
-    max-width: 500px;
-    max-height: 500px;
-    width: auto;
-    height: auto;
+    max-width: 100%;
     display: block;
     margin: 5px 0;
 }
 
 .note-card .note-content iframe {
-    max-width: 500px;
-    max-height: 500px;
-    width: 100%;
-    height: auto;
-    margin: 5px 0;
+    max-width: 100%;
+}
+
+/* ===== Light Theme ===== */
+body.light {
+    background-color: #f5f5f5;
+    color: black;
+}
+
+body.light .sidebar {
+    background: #ffffff;
+}
+
+body.light .create-note {
+    background: #ffffff;
+}
+
+body.light .note-card {
+    background: #ffffff;
+    color: black;
+}
+
+body.light input,
+body.light textarea {
+    background: #eeeeee;
+    color: black;
+}
+
+body.light .topbar input {
+    background: #eeeeee;
+    color: black;
 }
