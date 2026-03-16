@@ -7,7 +7,6 @@ const searchInput = document.getElementById("searchInput");
 let editingNoteId = null;
 let notes = [];
 
-// Redirect if not logged in
 const token = localStorage.getItem("token");
 if (!token) window.location.href = "login.html";
 
@@ -15,10 +14,7 @@ if (!token) window.location.href = "login.html";
 async function loadNotes() {
   notes = await apiRequest("/notes");
 
-  // hide archived
-  notes = notes.filter(n => !n.archived);
-
-  // pinned first
+  // ❗ NO archive filtering here anymore
   notes.sort((a, b) => (b.pinned === true) - (a.pinned === true));
 
   renderNotes(notes);
@@ -27,6 +23,8 @@ async function loadNotes() {
 // ================= RENDER =================
 function renderNotes(list) {
   notesContainer.innerHTML = "";
+
+  const isArchivePage = window.location.pathname.includes("archive");
 
   list.forEach(note => {
     const div = document.createElement("div");
@@ -41,7 +39,9 @@ function renderNotes(list) {
         <button onclick="editNote('${note._id}')">Edit</button>
         <button onclick="deleteNote('${note._id}')">Delete</button>
         <button onclick="togglePin('${note._id}')">📌</button>
-        <button onclick="toggleArchive('${note._id}')">📦</button>
+        <button onclick="toggleArchive('${note._id}')">
+          ${isArchivePage ? "↩️" : "📦"}
+        </button>
       </div>
     `;
 
@@ -74,7 +74,7 @@ async function deleteNote(id) {
 }
 
 // ================= EDIT =================
-async function editNote(id) {
+function editNote(id) {
   const note = notes.find(n => n._id === id);
   if (!note) return;
 
@@ -96,26 +96,26 @@ async function toggleArchive(id) {
 }
 
 // ================= SEARCH =================
-searchInput.addEventListener("input", (e) => {
-  const q = e.target.value.toLowerCase();
+if (searchInput) {
+  searchInput.addEventListener("input", (e) => {
+    const q = e.target.value.toLowerCase();
 
-  const filtered = notes.filter(n =>
-    (n.title || "").toLowerCase().includes(q) ||
-    (n.content || "").toLowerCase().includes(q)
-  );
+    const filtered = notes.filter(n =>
+      (n.title || "").toLowerCase().includes(q) ||
+      (n.content || "").toLowerCase().includes(q)
+    );
 
-  renderNotes(filtered);
-});
+    renderNotes(filtered);
+  });
+}
 
 // ================= THEME =================
 function toggleTheme() {
   document.body.classList.toggle("light");
-
   const isLight = document.body.classList.contains("light");
   localStorage.setItem("theme", isLight ? "light" : "dark");
 }
 
-// Load theme
 (function () {
   const saved = localStorage.getItem("theme");
   if (saved === "light") {
@@ -124,14 +124,16 @@ function toggleTheme() {
 })();
 
 // ================= EVENTS =================
-addNoteBtn.onclick = () => {
-  editingNoteId = null;
-  titleInput.value = "";
-  contentInput.innerHTML = "";
-};
+if (addNoteBtn) {
+  addNoteBtn.onclick = () => {
+    editingNoteId = null;
+    titleInput.value = "";
+    contentInput.innerHTML = "";
+  };
+}
 
-titleInput.addEventListener("blur", saveNote);
-contentInput.addEventListener("blur", saveNote);
+if (titleInput) titleInput.addEventListener("blur", saveNote);
+if (contentInput) contentInput.addEventListener("blur", saveNote);
 
 // ================= INIT =================
-loadNotes();
+if (notesContainer) loadNotes();
