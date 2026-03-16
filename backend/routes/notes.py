@@ -45,8 +45,6 @@ def create_note():
         "title": bleach.clean(title, strip=True),
         "content": sanitize_html(content),
         "updated_at": datetime.utcnow(),
-
-        # NEW
         "pinned": False,
         "archived": False,
         "tags": data.get("tags", [])
