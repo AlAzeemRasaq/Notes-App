@@ -7,8 +7,10 @@ import bleach
 
 notes_bp = Blueprint("notes", __name__)
 
+# print("Incoming request data:", request.json)
+
 # =========================
-# Allowed HTML for rich text
+# Allowed HTML tags and attributes for rich text
 # =========================
 ALLOWED_TAGS = ["b","i","u","strong","em","a","p","br","ul","ol","li","img","iframe",
                 "h1","h2","h3","h4","h5","h6","blockquote"]
@@ -20,18 +22,21 @@ ALLOWED_ATTRS = {
 ALLOWED_PROTOCOLS = ["http","https","mailto"]
 
 def sanitize_html(content):
-    """Clean user input HTML to prevent XSS."""
+    """Clean HTML content to allow only safe tags and attributes."""
     return bleach.clean(content, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS,
                         protocols=ALLOWED_PROTOCOLS, strip=True)
 
 def get_json_request():
-    """Helper to safely parse JSON request"""
+    """
+    Safely parse JSON from request body.
+    Logs raw body for debugging.
+    """
     try:
         data = request.get_json(force=True)
-        print("[NOTES] Received JSON:", data)
+        print(f"[NOTES] Received JSON: {data}")
         return data or {}
     except Exception as e:
-        print("[NOTES] Failed to parse JSON:", e)
+        print(f"[NOTES] Failed to parse JSON. Raw data: {request.data}, Error: {e}")
         return {}
 
 # =========================
@@ -43,8 +48,10 @@ def create_note():
     user_id = str(get_jwt_identity())
     data = get_json_request()
 
-    title = data.get("title","").strip()
-    content = data.get("content","").strip()
+    title = (data.get("title") or "").strip()
+    content = (data.get("content") or "").strip()
+
+    # Reject truly empty notes
     if not title and not content:
         return jsonify({"message":"Cannot save empty note"}), 400
 
@@ -57,7 +64,7 @@ def create_note():
 
     result = mongo.db.notes.insert_one(note)
     print(f"[CREATE NOTE] User {user_id} created note {result.inserted_id}")
-    return jsonify({"id": str(result.inserted_id)}), 201
+    return jsonify({"_id": str(result.inserted_id)}), 201
 
 # =========================
 # GET ALL NOTES FOR USER
@@ -82,8 +89,9 @@ def update_note(id):
     user_id = str(get_jwt_identity())
     data = get_json_request()
 
-    title = data.get("title","").strip()
-    content = data.get("content","").strip()
+    title = (data.get("title") or "").strip()
+    content = (data.get("content") or "").strip()
+
     if not title and not content:
         return jsonify({"message":"Cannot save empty note"}), 400
 
@@ -93,8 +101,11 @@ def update_note(id):
         "updated_at": datetime.utcnow()
     }
 
-    result = mongo.db.notes.update_one({"_id": ObjectId(id), "user_id": user_id},
-                                       {"$set": updated_fields})
+    result = mongo.db.notes.update_one(
+        {"_id": ObjectId(id), "user_id": user_id},
+        {"$set": updated_fields}
+    )
+
     if result.matched_count == 0:
         return jsonify({"message":"Note not found or not owned by user"}), 404
 
@@ -109,6 +120,7 @@ def update_note(id):
 def delete_note(id):
     user_id = str(get_jwt_identity())
     result = mongo.db.notes.delete_one({"_id": ObjectId(id), "user_id": user_id})
+
     if result.deleted_count == 0:
         return jsonify({"message":"Note not found or not owned by user"}), 404
 
