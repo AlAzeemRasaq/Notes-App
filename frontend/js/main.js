@@ -1,139 +1,199 @@
-const notesContainer = document.getElementById("notesContainer");
-const addNoteBtn = document.getElementById("addNoteBtn");
-const titleInput = document.getElementById("noteTitle");
-const contentInput = document.getElementById("noteContent");
-const searchInput = document.getElementById("searchInput");
+// ===== GLOBAL STATE =====
+let allNotes = [];
+let draggedNoteId = null;
 
-let editingNoteId = null;
-let notes = [];
-
-const token = localStorage.getItem("token");
-if (!token) window.location.href = "login.html";
-
-// ================= LOAD =================
+// ===== LOAD NOTES =====
 async function loadNotes() {
-  notes = await apiRequest("/notes");
+    let notes = await apiRequest("/notes");
 
-  // ❗ NO archive filtering here anymore
-  notes.sort((a, b) => (b.pinned === true) - (a.pinned === true));
+    const isArchivePage = window.location.pathname.includes("archive");
 
-  renderNotes(notes);
+    // Filter notes based on page
+    notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
+
+    // Sort pinned notes first
+    notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+    allNotes = notes;
+
+    renderNotes(notes);
 }
 
-// ================= RENDER =================
-function renderNotes(list) {
-  notesContainer.innerHTML = "";
+// ===== RENDER NOTES =====
+function renderNotes(notes) {
+    const container = document.getElementById("notesContainer");
+    container.innerHTML = "";
 
-  const isArchivePage = window.location.pathname.includes("archive");
+    const isArchivePage = window.location.pathname.includes("archive");
 
-  list.forEach(note => {
-    const div = document.createElement("div");
-    div.className = "note-card";
+    notes.forEach(note => {
+        const div = document.createElement("div");
+        div.className = "note";
+        div.draggable = true;
+        div.dataset.id = note._id;
 
-    if (note.pinned) div.classList.add("pinned");
+        // ===== DRAG EVENTS =====
+        div.addEventListener("dragstart", () => {
+            draggedNoteId = note._id;
+            div.classList.add("dragging");
+        });
 
-    div.innerHTML = `
-      <h3>${note.title || "Untitled"}</h3>
-      <div class="note-content">${note.content || ""}</div>
-      <div class="note-actions">
-        <button onclick="editNote('${note._id}')">Edit</button>
-        <button onclick="deleteNote('${note._id}')">Delete</button>
-        <button onclick="togglePin('${note._id}')">📌</button>
-        <button onclick="toggleArchive('${note._id}')">
-          ${isArchivePage ? "↩️" : "📦"}
-        </button>
-      </div>
-    `;
+        div.addEventListener("dragend", () => {
+            draggedNoteId = null;
+            div.classList.remove("dragging");
+        });
 
-    notesContainer.appendChild(div);
-  });
+        div.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            div.classList.add("drag-over");
+        });
+
+        div.addEventListener("dragleave", () => {
+            div.classList.remove("drag-over");
+        });
+
+        div.addEventListener("drop", async () => {
+            div.classList.remove("drag-over");
+
+            if (!draggedNoteId || draggedNoteId === note._id) return;
+
+            await reorderNotes(draggedNoteId, note._id);
+        });
+
+        // ===== NOTE CONTENT =====
+        div.innerHTML = `
+            <h3>${note.title || "Untitled"}</h3>
+            <div class="note-content">${note.content || ""}</div>
+            <div class="tags">
+                ${(note.tags || []).map(tag =>
+                    `<span onclick="filterByTag('${tag}')">${tag}</span>`
+                ).join("")}
+            </div>
+            <div class="note-actions">
+                <button onclick="editNote('${note._id}')">Edit</button>
+                <button onclick="deleteNote('${note._id}')">Delete</button>
+                <button onclick="togglePin('${note._id}')">📌</button>
+                <button onclick="toggleArchive('${note._id}')">
+                    ${isArchivePage ? "↩️" : "📦"}
+                </button>
+            </div>
+        `;
+
+        if (note.pinned) div.classList.add("pinned");
+
+        container.appendChild(div);
+    });
 }
 
-// ================= SAVE =================
-async function saveNote() {
-  const title = titleInput.value.trim();
-  const content = contentInput.innerHTML.trim();
+// ===== DRAG REORDER =====
+async function reorderNotes(draggedId, targetId) {
+    let notes = [...allNotes];
 
-  if (!title && !content) return;
+    const draggedIndex = notes.findIndex(n => n._id === draggedId);
+    const targetIndex = notes.findIndex(n => n._id === targetId);
 
-  if (editingNoteId) {
-    await apiRequest(`/notes/${editingNoteId}`, "PUT", { title, content });
-  } else {
-    const res = await apiRequest("/notes", "POST", { title, content });
-    editingNoteId = res._id;
-  }
+    if (draggedIndex === -1 || targetIndex === -1) return;
 
-  loadNotes();
+    const [movedNote] = notes.splice(draggedIndex, 1);
+    notes.splice(targetIndex, 0, movedNote);
+
+    allNotes = notes;
+
+    renderNotes(notes);
+    // Optional: persist order to backend later
 }
 
-// ================= DELETE =================
+// ===== CREATE NOTE =====
+async function createNote() {
+    const title = document.getElementById("noteTitle").value;
+    const content = document.getElementById("noteContent").innerHTML;
+
+    await apiRequest("/notes", "POST", {
+        title,
+        content,
+        tags: [] // can add tag input later
+    });
+
+    // Clear inputs after saving
+    document.getElementById("noteTitle").value = "";
+    document.getElementById("noteContent").innerHTML = "";
+
+    await loadNotes();
+}
+
+// ===== DELETE NOTE =====
 async function deleteNote(id) {
-  if (!confirm("Delete this note?")) return;
-  await apiRequest(`/notes/${id}`, "DELETE");
-  loadNotes();
+    if (!confirm("Delete this note?")) return;
+
+    // 🔹 FIXED: Proper string syntax
+    await apiRequest(`/notes/${id}`, "DELETE");
+    await loadNotes();
 }
 
-// ================= EDIT =================
-function editNote(id) {
-  const note = notes.find(n => n._id === id);
-  if (!note) return;
-
-  editingNoteId = id;
-  titleInput.value = note.title || "";
-  contentInput.innerHTML = note.content || "";
-}
-
-// ================= PIN =================
+// ===== PIN NOTE =====
 async function togglePin(id) {
-  await apiRequest(`/notes/pin/${id}`, "PUT");
-  loadNotes();
+    await apiRequest(`/notes/pin/${id}`, "PUT");
+    await loadNotes();
 }
 
-// ================= ARCHIVE =================
+// ===== ARCHIVE NOTE =====
 async function toggleArchive(id) {
-  await apiRequest(`/notes/archive/${id}`, "PUT");
-  loadNotes();
+    await apiRequest(`/notes/archive/${id}`, "PUT");
+    await loadNotes();
 }
 
-// ================= SEARCH =================
-if (searchInput) {
-  searchInput.addEventListener("input", (e) => {
-    const q = e.target.value.toLowerCase();
+// ===== SEARCH NOTES =====
+document.getElementById("searchInput")?.addEventListener("input", (e) => {
+    const query = e.target.value.toLowerCase();
 
-    const filtered = notes.filter(n =>
-      (n.title || "").toLowerCase().includes(q) ||
-      (n.content || "").toLowerCase().includes(q)
+    const filtered = allNotes.filter(n =>
+        (n.title || "").toLowerCase().includes(query) ||
+        (n.content || "").toLowerCase().includes(query)
     );
 
     renderNotes(filtered);
-  });
+});
+
+// ===== TAG FILTER =====
+function filterByTag(tag) {
+    const filtered = allNotes.filter(n => (n.tags || []).includes(tag));
+    renderNotes(filtered);
 }
 
-// ================= THEME =================
+// ===== THEME TOGGLE =====
 function toggleTheme() {
-  document.body.classList.toggle("light");
-  const isLight = document.body.classList.contains("light");
-  localStorage.setItem("theme", isLight ? "light" : "dark");
+    document.body.classList.toggle("light");
 }
 
-(function () {
-  const saved = localStorage.getItem("theme");
-  if (saved === "light") {
-    document.body.classList.add("light");
-  }
-})();
+// ===== EDIT NOTE =====
+async function editNote(id) {
+    const note = allNotes.find(n => n._id === id);
+    if (!note) return;
 
-// ================= EVENTS =================
-if (addNoteBtn) {
-  addNoteBtn.onclick = () => {
-    editingNoteId = null;
-    titleInput.value = "";
-    contentInput.innerHTML = "";
-  };
+    document.getElementById("noteTitle").value = note.title || "";
+    document.getElementById("noteContent").innerHTML = note.content || "";
+
+    // Override addNoteBtn for updating
+    document.getElementById("addNoteBtn").onclick = async () => {
+        const updatedTitle = document.getElementById("noteTitle").value;
+        const updatedContent = document.getElementById("noteContent").innerHTML;
+
+        await apiRequest(`/notes/${id}`, "PUT", {
+            title: updatedTitle,
+            content: updatedContent
+        });
+
+        // Clear inputs
+        document.getElementById("noteTitle").value = "";
+        document.getElementById("noteContent").innerHTML = "";
+
+        // Restore default click
+        document.getElementById("addNoteBtn").onclick = createNote;
+
+        await loadNotes();
+    };
 }
 
-if (titleInput) titleInput.addEventListener("blur", saveNote);
-if (contentInput) contentInput.addEventListener("blur", saveNote);
-
-// ================= INIT =================
-if (notesContainer) loadNotes();
+// ===== INIT =====
+document.getElementById("addNoteBtn")?.addEventListener("click", createNote);
+loadNotes();
