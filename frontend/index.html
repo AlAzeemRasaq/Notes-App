@@ -24,8 +24,10 @@
 
         <!-- Top Bar -->
         <header class="topbar">
-            <input type="text" placeholder="Search notes...">
+            <input id="searchInput" type="text" placeholder="Search notes...">
+
             <div class="auth-buttons">
+                <button onclick="toggleTheme()">🌗</button>
                 <button id="loginBtn">Login</button>
                 <button id="registerBtn">Sign Up</button>
                 <button id="logoutBtn" class="hidden">Logout</button>
@@ -65,7 +67,7 @@
     <script src="js/main.js"></script>
 
     <script>
-        // ================= Rich Text Functions =================
+        // ================= Rich Text =================
         function formatText(command) {
             if (command === 'createLink') {
                 const url = prompt('Enter the URL');
@@ -109,9 +111,11 @@
             }
         }
 
-        // ================= Drag & Drop =================
+        // ================= Drag & Drop (Images only) =================
         const editor = document.getElementById('noteContent');
+
         editor.addEventListener('dragover', e => e.preventDefault());
+
         editor.addEventListener('drop', e => {
             e.preventDefault();
             const file = e.dataTransfer.files[0];
@@ -126,13 +130,16 @@
             reader.readAsDataURL(file);
         });
 
-        // ================= Paste Handling =================
+        // ================= Paste Images =================
         editor.addEventListener('paste', e => {
             const items = e.clipboardData.items;
+
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
+
                 if (item.type.startsWith('image/')) {
                     const file = item.getAsFile();
+
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         const img = document.createElement('img');
