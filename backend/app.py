@@ -31,7 +31,7 @@ jwt.init_app(app)
 # =========================
 # Register Blueprints
 # =========================
-app.register_blueprint(auth_bp, url_prefix="/api/auth")  # Auth routes
+app.register_blueprint(auth_bp, url_prefix="/api/auth")   # Auth routes
 app.register_blueprint(notes_bp, url_prefix="/api/notes") # Notes routes
 
 # =========================
@@ -40,6 +40,19 @@ app.register_blueprint(notes_bp, url_prefix="/api/notes") # Notes routes
 @app.route("/")
 def serve_index():
     return send_from_directory(app.static_folder, "index.html")
+
+# =========================
+# Catch-all 404 route
+# =========================
+@app.route("/<path:unknown_path>")
+def catch_all(unknown_path):
+    # Serve the 404 page for any unknown route
+    return send_from_directory(app.static_folder, "index-404.html"), 404
+
+# Optional: also handle 404 errors directly
+@app.errorhandler(404)
+def page_not_found(e):
+    return send_from_directory(app.static_folder, "index-404.html"), 404
 
 # =========================
 # Run server
