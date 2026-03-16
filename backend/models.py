@@ -17,6 +17,11 @@ class Note(db.Model):
     content = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
+    # ✅ NEW
+    pinned = db.Column(db.Boolean, default=False)
+    archived = db.Column(db.Boolean, default=False)
+    tags = db.Column(db.JSON, default=[])
+
 
 # 3️⃣ CATEGORIES TABLE
 class Category(db.Model):
