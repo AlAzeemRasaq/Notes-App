@@ -1,167 +1,137 @@
-// =========================
-// DOM Elements
-// =========================
 const notesContainer = document.getElementById("notesContainer");
 const addNoteBtn = document.getElementById("addNoteBtn");
 const titleInput = document.getElementById("noteTitle");
 const contentInput = document.getElementById("noteContent");
+const searchInput = document.getElementById("searchInput");
 
 let editingNoteId = null;
+let notes = [];
 
-// =========================
 // Redirect if not logged in
-// =========================
 const token = localStorage.getItem("token");
-if (!token) {
-  console.warn("No JWT token, redirecting to login.");
-  window.location.href = "login.html";
-}
+if (!token) window.location.href = "login.html";
 
-// =========================
-// Load Notes
-// =========================
+// ================= LOAD =================
 async function loadNotes() {
-  console.log("Loading notes...");
+  notes = await apiRequest("/notes");
 
-  try {
-    const notes = await apiRequest("/notes");
+  // hide archived
+  notes = notes.filter(n => !n.archived);
 
-    notesContainer.innerHTML = "";
+  // pinned first
+  notes.sort((a, b) => (b.pinned === true) - (a.pinned === true));
 
-    notes.forEach(note => {
-
-      const div = document.createElement("div");
-      div.className = "note-card";
-
-      div.innerHTML = `
-        <h3>${note.title || "Untitled"}</h3>
-        <div class="note-content">${note.content || ""}</div>
-        <div class="note-actions">
-          <button onclick="editNote('${note._id}')">Edit</button>
-          <button onclick="deleteNote('${note._id}')">Delete</button>
-        </div>
-      `;
-
-      notesContainer.appendChild(div);
-    });
-
-  } catch (err) {
-    console.error("Failed to load notes:", err);
-  }
+  renderNotes(notes);
 }
 
-// =========================
-// Save or Update Note
-// =========================
+// ================= RENDER =================
+function renderNotes(list) {
+  notesContainer.innerHTML = "";
+
+  list.forEach(note => {
+    const div = document.createElement("div");
+    div.className = "note-card";
+
+    if (note.pinned) div.classList.add("pinned");
+
+    div.innerHTML = `
+      <h3>${note.title || "Untitled"}</h3>
+      <div class="note-content">${note.content || ""}</div>
+      <div class="note-actions">
+        <button onclick="editNote('${note._id}')">Edit</button>
+        <button onclick="deleteNote('${note._id}')">Delete</button>
+        <button onclick="togglePin('${note._id}')">📌</button>
+        <button onclick="toggleArchive('${note._id}')">📦</button>
+      </div>
+    `;
+
+    notesContainer.appendChild(div);
+  });
+}
+
+// ================= SAVE =================
 async function saveNote() {
+  const title = titleInput.value.trim();
+  const content = contentInput.innerHTML.trim();
 
-  const title = (titleInput.value || "").trim();
-  const content = contentInput.innerHTML.replace(/<[^>]*>/g, "").trim();
+  if (!title && !content) return;
 
-  if (!title && !content) {
-    console.log("Empty note, skipping save.");
-    return;
+  if (editingNoteId) {
+    await apiRequest(`/notes/${editingNoteId}`, "PUT", { title, content });
+  } else {
+    const res = await apiRequest("/notes", "POST", { title, content });
+    editingNoteId = res._id;
   }
 
-  try {
-
-    if (editingNoteId) {
-
-      await apiRequest(`/notes/${editingNoteId}`, "PUT", {
-        title,
-        content
-      });
-
-    } else {
-
-      const result = await apiRequest("/notes", "POST", {
-        title,
-        content
-      });
-
-      editingNoteId = result._id;
-    }
-
-    await loadNotes();
-
-  } catch (err) {
-    console.error("Failed to save note:", err);
-  }
+  loadNotes();
 }
 
-// =========================
-// Add Note Button
-// =========================
+// ================= DELETE =================
+async function deleteNote(id) {
+  if (!confirm("Delete this note?")) return;
+  await apiRequest(`/notes/${id}`, "DELETE");
+  loadNotes();
+}
+
+// ================= EDIT =================
+async function editNote(id) {
+  const note = notes.find(n => n._id === id);
+  if (!note) return;
+
+  editingNoteId = id;
+  titleInput.value = note.title || "";
+  contentInput.innerHTML = note.content || "";
+}
+
+// ================= PIN =================
+async function togglePin(id) {
+  await apiRequest(`/notes/pin/${id}`, "PUT");
+  loadNotes();
+}
+
+// ================= ARCHIVE =================
+async function toggleArchive(id) {
+  await apiRequest(`/notes/archive/${id}`, "PUT");
+  loadNotes();
+}
+
+// ================= SEARCH =================
+searchInput.addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+
+  const filtered = notes.filter(n =>
+    (n.title || "").toLowerCase().includes(q) ||
+    (n.content || "").toLowerCase().includes(q)
+  );
+
+  renderNotes(filtered);
+});
+
+// ================= THEME =================
+function toggleTheme() {
+  document.body.classList.toggle("light");
+
+  const isLight = document.body.classList.contains("light");
+  localStorage.setItem("theme", isLight ? "light" : "dark");
+}
+
+// Load theme
+(function () {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light") {
+    document.body.classList.add("light");
+  }
+})();
+
+// ================= EVENTS =================
 addNoteBtn.onclick = () => {
-
   editingNoteId = null;
-
   titleInput.value = "";
   contentInput.innerHTML = "";
-
-  titleInput.focus();
 };
 
-// =========================
-// Delete Note
-// =========================
-async function deleteNote(id) {
+titleInput.addEventListener("blur", saveNote);
+contentInput.addEventListener("blur", saveNote);
 
-  if (!confirm("Delete this note?")) return;
-
-  try {
-
-    await apiRequest(`/notes/${id}`, "DELETE");
-
-    if (editingNoteId === id) {
-      editingNoteId = null;
-      titleInput.value = "";
-      contentInput.innerHTML = "";
-    }
-
-    await loadNotes();
-
-  } catch (err) {
-    console.error("Failed to delete note:", err);
-  }
-}
-
-// =========================
-// Edit Note
-// =========================
-async function editNote(id) {
-
-  try {
-
-    const notes = await apiRequest("/notes");
-    const note = notes.find(n => n._id === id);
-
-    if (!note) return;
-
-    editingNoteId = id;
-
-    titleInput.value = note.title || "";
-    contentInput.innerHTML = note.content || "";
-
-    titleInput.focus();
-
-  } catch (err) {
-    console.error("Failed to fetch note for editing:", err);
-  }
-}
-
-// =========================
-// Save when user clicks outside editor
-// =========================
-function handleBlurSave() {
-  console.log("Editor lost focus. Saving...");
-  saveNote();
-}
-
-titleInput.addEventListener("blur", handleBlurSave);
-contentInput.addEventListener("blur", handleBlurSave);
-
-// =========================
-// Initial Load
-// =========================
+// ================= INIT =================
 loadNotes();
