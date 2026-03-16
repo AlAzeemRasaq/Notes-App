@@ -1,1 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <title>Archived Notes</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        <h2>Notes</h2>
+        <nav>
+            <a href="index.html">All Notes</a>
+            <a href="index-archive.html">Archived</a>
+        </nav>
+    </aside>
+
+    <div class="main-container">
+
+        <header class="topbar">
+            <input id="searchInput" type="text" placeholder="Search archived notes...">
+            <button onclick="toggleTheme()">🌗</button>
+        </header>
+
+        <h2 style="margin-bottom: 20px;">📦 Archived Notes</h2>
+
+        <div id="notesContainer" class="notes-grid"></div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+
+    <script>
+        // Override loadNotes behavior for archive page
+        async function loadNotes() {
+            let notes = await apiRequest("/notes");
+
+            // ✅ ONLY archived
+            notes = notes.filter(n => n.archived);
+
+            renderNotes(notes);
+        }
+
+        loadNotes();
+    </script>
+
+</body>
+</html>
