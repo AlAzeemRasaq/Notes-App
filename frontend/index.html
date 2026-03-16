@@ -9,23 +9,19 @@
 
 <body>
 
-    <!-- ================= Sidebar ================= -->
     <aside class="sidebar">
         <h2>Notes</h2>
         <nav>
-            <a href="#">All Notes</a>
-            <a href="#">Archived</a>
+            <a href="index.html">All Notes</a>
+            <a href="index-archive.html">Archived</a>
             <a href="#">Trash</a>
         </nav>
     </aside>
 
-    <!-- ================= Main Content ================= -->
     <div class="main-container">
 
-        <!-- Top Bar -->
         <header class="topbar">
             <input id="searchInput" type="text" placeholder="Search notes...">
-
             <div class="auth-buttons">
                 <button onclick="toggleTheme()">🌗</button>
                 <button id="loginBtn">Login</button>
@@ -34,123 +30,30 @@
             </div>
         </header>
 
-        <!-- Create Note -->
         <div class="create-note">
             <input type="text" id="noteTitle" placeholder="Title">
 
-            <!-- Toolbar -->
             <div class="toolbar">
-                <button type="button" onclick="formatText('bold')"><b>B</b></button>
-                <button type="button" onclick="formatText('italic')"><i>I</i></button>
-                <button type="button" onclick="formatText('underline')"><u>U</u></button>
-                <button type="button" onclick="formatText('createLink')">Link</button>
-                <button type="button" onclick="triggerImageUpload()">Image</button>
-                <button type="button" onclick="insertEmbed()">Embed</button>
+                <button onclick="formatText('bold')"><b>B</b></button>
+                <button onclick="formatText('italic')"><i>I</i></button>
+                <button onclick="formatText('underline')"><u>U</u></button>
+                <button onclick="formatText('createLink')">Link</button>
+                <button onclick="triggerImageUpload()">Image</button>
+                <button onclick="insertEmbed()">Embed</button>
             </div>
 
-            <!-- Rich text editor -->
-            <div id="noteContent" class="rich-editor" contenteditable="true" placeholder="Take a note..."></div>
+            <div id="noteContent" class="rich-editor" contenteditable="true"></div>
 
-            <!-- Hidden image uploader -->
-            <input type="file" id="imageUploader" accept="image/*" style="display:none">
+            <input type="file" id="imageUploader" style="display:none">
 
             <button id="addNoteBtn">Add Note</button>
         </div>
 
-        <!-- Notes Grid -->
         <div id="notesContainer" class="notes-grid"></div>
     </div>
 
-    <!-- Scripts -->
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
-
-    <script>
-        // ================= Rich Text =================
-        function formatText(command) {
-            if (command === 'createLink') {
-                const url = prompt('Enter the URL');
-                if (url) {
-                    let finalUrl = url.startsWith('http') ? url : 'https://' + url;
-                    document.execCommand(command, false, finalUrl);
-                }
-            } else {
-                document.execCommand(command, false, null);
-            }
-        }
-
-        function triggerImageUpload() {
-            document.getElementById('imageUploader').click();
-        }
-
-        document.getElementById('imageUploader').addEventListener('change', function () {
-            const file = this.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                document.getElementById('noteContent').appendChild(img);
-            };
-            reader.readAsDataURL(file);
-        });
-
-        function insertEmbed() {
-            const embedCode = prompt('Paste embed HTML (like iframe)');
-            if (embedCode) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(embedCode, 'text/html');
-                const iframe = doc.querySelector('iframe');
-                if (iframe) {
-                    document.getElementById('noteContent').appendChild(iframe);
-                } else {
-                    alert('Invalid embed code');
-                }
-            }
-        }
-
-        // ================= Drag & Drop (Images only) =================
-        const editor = document.getElementById('noteContent');
-
-        editor.addEventListener('dragover', e => e.preventDefault());
-
-        editor.addEventListener('drop', e => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (!file || !file.type.startsWith('image/')) return;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                editor.appendChild(img);
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // ================= Paste Images =================
-        editor.addEventListener('paste', e => {
-            const items = e.clipboardData.items;
-
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-
-                if (item.type.startsWith('image/')) {
-                    const file = item.getAsFile();
-
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        editor.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-        });
-    </script>
-
 </body>
 </html>
