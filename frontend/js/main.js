@@ -1,23 +1,40 @@
 // ===== GLOBAL STATE =====
 let allNotes = [];
 let draggedNoteId = null;
+let searchTimeout = null; // debounce timer
 
 // ===== LOAD NOTES =====
-async function loadNotes() {
-    let notes = await apiRequest("/notes");
+async function loadNotes(search = "") {
+    // 🔍 If search exists, send it to backend
+    let url = search
+        ? `/notes?search=${encodeURIComponent(search)}`
+        : "/notes";
+
+    let notes = await apiRequest(url);
 
     const isArchivePage = window.location.pathname.includes("archive");
 
-    // Filter notes based on page
+    // Filter archive state (UNCHANGED)
     notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
 
-    // Sort pinned notes first
+    // Sort pinned (UNCHANGED)
     notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
     allNotes = notes;
 
     renderNotes(notes);
 }
+
+// ===== SEARCH (UPGRADED, SAFE) =====
+document.getElementById("searchInput")?.addEventListener("input", (e) => {
+    const query = e.target.value.trim();
+
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(() => {
+        loadNotes(query); // 🔥 backend search
+    }, 300);
+});
 
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
