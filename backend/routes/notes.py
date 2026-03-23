@@ -53,15 +53,28 @@ def create_note():
     result = mongo.db.notes.insert_one(note)
     return jsonify({"_id": str(result.inserted_id)}), 201
 
-# ================= READ =================
+# ================= READ (WITH SEARCH ADDED SAFELY) =================
 @notes_bp.route("", methods=["GET"])
 @jwt_required()
 def get_notes():
     user_id = str(get_jwt_identity())
 
+    # 🔍 Get search query (optional)
+    search_query = request.args.get("search", "").strip()
+
+    # Base query (always filter by user)
+    query = {"user_id": user_id}
+
+    # Only add search if user typed something
+    if search_query:
+        query["$or"] = [
+            {"title": {"$regex": search_query, "$options": "i"}},
+            {"content": {"$regex": search_query, "$options": "i"}}
+        ]
+
     notes = []
     for note in mongo.db.notes.find(
-        {"user_id": user_id},
+        query,
         sort=[("pinned", -1), ("updated_at", -1)]
     ):
         note["_id"] = str(note["_id"])
