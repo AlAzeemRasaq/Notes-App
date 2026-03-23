@@ -1,11 +1,14 @@
 // ===== GLOBAL STATE =====
 let allNotes = [];
 let draggedNoteId = null;
-let searchTimeout = null; // debounce timer
+let searchTimeout = null;
+
+// 🔍 NEW: unified filter state
+let currentSearch = "";
+let currentTag = null;
 
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
-    // 🔍 If search exists, send it to backend
     let url = search
         ? `/notes?search=${encodeURIComponent(search)}`
         : "/notes";
@@ -14,25 +17,49 @@ async function loadNotes(search = "") {
 
     const isArchivePage = window.location.pathname.includes("archive");
 
-    // Filter archive state (UNCHANGED)
+    // Keep archive filtering
     notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
 
-    // Sort pinned (UNCHANGED)
+    // Keep pin sorting
     notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
     allNotes = notes;
 
-    renderNotes(notes);
+    applyFilters(); // 🔥 IMPORTANT: always go through filter system
 }
 
-// ===== SEARCH (UPGRADED, SAFE) =====
+// ===== APPLY FILTERS (SEARCH + TAG) =====
+function applyFilters() {
+    let filtered = allNotes.filter(note => {
+        // 🔍 Search match
+        const matchesSearch =
+            (note.title || "").toLowerCase().includes(currentSearch) ||
+            (note.content || "").toLowerCase().includes(currentSearch);
+
+        // 🏷️ Tag match
+        const matchesTag = currentTag
+            ? (note.tags || []).includes(currentTag)
+            : true;
+
+        return matchesSearch && matchesTag;
+    });
+
+    renderNotes(filtered);
+}
+
+// ===== SEARCH (HYBRID: BACKEND + INSTANT UI) =====
 document.getElementById("searchInput")?.addEventListener("input", (e) => {
-    const query = e.target.value.trim();
+    const query = e.target.value.trim().toLowerCase();
 
+    currentSearch = query;
+
+    // ⚡ instant UI update
+    applyFilters();
+
+    // ⏳ backend refresh (debounced)
     clearTimeout(searchTimeout);
-
     searchTimeout = setTimeout(() => {
-        loadNotes(query); // 🔥 backend search
+        loadNotes(query);
     }, 300);
 });
 
@@ -116,8 +143,7 @@ async function reorderNotes(draggedId, targetId) {
 
     allNotes = notes;
 
-    renderNotes(notes);
-    // Optional: persist order to backend later
+    applyFilters(); // 🔥 keep filters applied after reorder
 }
 
 // ===== CREATE NOTE =====
@@ -128,53 +154,40 @@ async function createNote() {
     await apiRequest("/notes", "POST", {
         title,
         content,
-        tags: [] // can add tag input later
+        tags: []
     });
 
-    // Clear inputs after saving
     document.getElementById("noteTitle").value = "";
     document.getElementById("noteContent").innerHTML = "";
 
-    await loadNotes();
+    await loadNotes(currentSearch); // 🔥 preserve search after create
 }
 
 // ===== DELETE NOTE =====
 async function deleteNote(id) {
     if (!confirm("Delete this note?")) return;
 
-    // 🔹 FIXED: Proper string syntax
     await apiRequest(`/notes/${id}`, "DELETE");
-    await loadNotes();
+    await loadNotes(currentSearch);
 }
 
 // ===== PIN NOTE =====
 async function togglePin(id) {
     await apiRequest(`/notes/pin/${id}`, "PUT");
-    await loadNotes();
+    await loadNotes(currentSearch);
 }
 
 // ===== ARCHIVE NOTE =====
 async function toggleArchive(id) {
     await apiRequest(`/notes/archive/${id}`, "PUT");
-    await loadNotes();
+    await loadNotes(currentSearch);
 }
-
-// ===== SEARCH NOTES =====
-document.getElementById("searchInput")?.addEventListener("input", (e) => {
-    const query = e.target.value.toLowerCase();
-
-    const filtered = allNotes.filter(n =>
-        (n.title || "").toLowerCase().includes(query) ||
-        (n.content || "").toLowerCase().includes(query)
-    );
-
-    renderNotes(filtered);
-});
 
 // ===== TAG FILTER =====
 function filterByTag(tag) {
-    const filtered = allNotes.filter(n => (n.tags || []).includes(tag));
-    renderNotes(filtered);
+    // Toggle tag on/off
+    currentTag = currentTag === tag ? null : tag;
+    applyFilters();
 }
 
 // ===== THEME TOGGLE =====
@@ -190,7 +203,6 @@ async function editNote(id) {
     document.getElementById("noteTitle").value = note.title || "";
     document.getElementById("noteContent").innerHTML = note.content || "";
 
-    // Override addNoteBtn for updating
     document.getElementById("addNoteBtn").onclick = async () => {
         const updatedTitle = document.getElementById("noteTitle").value;
         const updatedContent = document.getElementById("noteContent").innerHTML;
@@ -200,14 +212,12 @@ async function editNote(id) {
             content: updatedContent
         });
 
-        // Clear inputs
         document.getElementById("noteTitle").value = "";
         document.getElementById("noteContent").innerHTML = "";
 
-        // Restore default click
         document.getElementById("addNoteBtn").onclick = createNote;
 
-        await loadNotes();
+        await loadNotes(currentSearch);
     };
 }
 
