@@ -7,6 +7,7 @@ import bleach
 
 notes_bp = Blueprint("notes", __name__)
 
+# ================= HTML SANITIZATION =================
 ALLOWED_TAGS = ["b","i","u","strong","em","a","p","br","ul","ol","li","img","iframe",
                 "h1","h2","h3","h4","h5","h6","blockquote"]
 ALLOWED_ATTRS = {
@@ -27,7 +28,7 @@ def get_json_request():
     except:
         return {}
 
-# ================= CREATE =================
+# ================= CREATE NOTE =================
 @notes_bp.route("", methods=["POST"])
 @jwt_required()
 def create_note():
@@ -47,25 +48,23 @@ def create_note():
         "updated_at": datetime.utcnow(),
         "pinned": False,
         "archived": False,
-        "tags": data.get("tags", [])
+        "tags": data.get("tags", []),
+        "trashed": False,       # 🔥 soft delete support
+        "trashed_at": None
     }
 
     result = mongo.db.notes.insert_one(note)
     return jsonify({"_id": str(result.inserted_id)}), 201
 
-# ================= READ (WITH SEARCH ADDED SAFELY) =================
+# ================= READ NOTES =================
 @notes_bp.route("", methods=["GET"])
 @jwt_required()
 def get_notes():
     user_id = str(get_jwt_identity())
-
-    # 🔍 Get search query (optional)
     search_query = request.args.get("search", "").strip()
 
-    # Base query (always filter by user)
-    query = {"user_id": user_id}
+    query = {"user_id": user_id, "trashed": {"$ne": True}}
 
-    # Only add search if user typed something
     if search_query:
         query["$or"] = [
             {"title": {"$regex": search_query, "$options": "i"}},
@@ -73,16 +72,27 @@ def get_notes():
         ]
 
     notes = []
-    for note in mongo.db.notes.find(
-        query,
-        sort=[("pinned", -1), ("updated_at", -1)]
-    ):
+    for note in mongo.db.notes.find(query, sort=[("pinned",-1),("updated_at",-1)]):
         note["_id"] = str(note["_id"])
         notes.append(note)
 
     return jsonify(notes)
 
-# ================= UPDATE =================
+# ================= GET TRASH =================
+@notes_bp.route("/trash", methods=["GET"])
+@jwt_required()
+def get_trash_notes():
+    user_id = str(get_jwt_identity())
+
+    notes = []
+    for note in mongo.db.notes.find({"user_id": user_id, "trashed": True},
+                                    sort=[("trashed_at",-1)]):
+        note["_id"] = str(note["_id"])
+        notes.append(note)
+
+    return jsonify(notes)
+
+# ================= UPDATE NOTE =================
 @notes_bp.route("/<id>", methods=["PUT"])
 @jwt_required()
 def update_note(id):
@@ -102,7 +112,7 @@ def update_note(id):
     }
 
     result = mongo.db.notes.update_one(
-        {"_id": ObjectId(id), "user_id": user_id},
+        {"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}},
         {"$set": updated_fields}
     )
 
@@ -111,51 +121,109 @@ def update_note(id):
 
     return jsonify({"message":"Note updated"})
 
-# ================= DELETE =================
+# ================= SOFT DELETE =================
 @notes_bp.route("/<id>", methods=["DELETE"])
 @jwt_required()
 def delete_note(id):
     user_id = str(get_jwt_identity())
 
-    result = mongo.db.notes.delete_one(
-        {"_id": ObjectId(id), "user_id": user_id}
+    result = mongo.db.notes.update_one(
+        {"_id": ObjectId(id), "user_id": user_id},
+        {"$set": {"trashed": True, "trashed_at": datetime.utcnow()}}
     )
+
+    if result.matched_count == 0:
+        return jsonify({"message":"Note not found"}), 404
+
+    return jsonify({"message":"Note moved to trash"})
+
+# ================= RESTORE NOTE =================
+@notes_bp.route("/restore/<id>", methods=["PUT"])
+@jwt_required()
+def restore_note(id):
+    user_id = str(get_jwt_identity())
+
+    result = mongo.db.notes.update_one(
+        {"_id": ObjectId(id), "user_id": user_id},
+        {"$set": {"trashed": False, "trashed_at": None}}
+    )
+
+    if result.matched_count == 0:
+        return jsonify({"message":"Note not found"}), 404
+
+    return jsonify({"message":"Note restored"})
+
+# ================= PERMANENT DELETE =================
+@notes_bp.route("/permanent/<id>", methods=["DELETE"])
+@jwt_required()
+def permanent_delete(id):
+    user_id = str(get_jwt_identity())
+
+    result = mongo.db.notes.delete_one({"_id": ObjectId(id), "user_id": user_id})
 
     if result.deleted_count == 0:
         return jsonify({"message":"Note not found"}), 404
 
-    return jsonify({"message":"Note deleted"})
+    return jsonify({"message":"Note permanently deleted"})
 
-# ================= PIN =================
+# ================= PIN NOTE =================
 @notes_bp.route("/pin/<id>", methods=["PUT"])
 @jwt_required()
 def toggle_pin(id):
     user_id = str(get_jwt_identity())
 
-    note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id})
+    note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}})
     if not note:
-        return jsonify({"message": "Note not found"}), 404
+        return jsonify({"message":"Note not found"}), 404
 
-    mongo.db.notes.update_one(
-        {"_id": ObjectId(id)},
-        {"$set": {"pinned": not note.get("pinned", False)}}
-    )
+    mongo.db.notes.update_one({"_id": ObjectId(id)}, {"$set": {"pinned": not note.get("pinned", False)}})
+    return jsonify({"message":"Pin toggled"})
 
-    return jsonify({"message": "Pin toggled"})
-
-# ================= ARCHIVE =================
+# ================= ARCHIVE NOTE =================
 @notes_bp.route("/archive/<id>", methods=["PUT"])
 @jwt_required()
 def toggle_archive(id):
     user_id = str(get_jwt_identity())
 
-    note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id})
+    note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}})
     if not note:
-        return jsonify({"message": "Note not found"}), 404
+        return jsonify({"message":"Note not found"}), 404
 
-    mongo.db.notes.update_one(
-        {"_id": ObjectId(id)},
-        {"$set": {"archived": not note.get("archived", False)}}
+    mongo.db.notes.update_one({"_id": ObjectId(id)}, {"$set": {"archived": not note.get("archived", False)}})
+    return jsonify({"message":"Archive toggled"})
+
+# ================= 🔥 BULK DELETE =================
+@notes_bp.route("/bulk-delete", methods=["POST"])
+@jwt_required()
+def bulk_delete():
+    user_id = str(get_jwt_identity())
+    data = get_json_request()
+    note_ids = data.get("note_ids", [])
+
+    if not note_ids:
+        return jsonify({"message":"No notes provided"}), 400
+
+    result = mongo.db.notes.update_many(
+        {"_id": {"$in": [ObjectId(nid) for nid in note_ids]}, "user_id": user_id},
+        {"$set": {"trashed": True, "trashed_at": datetime.utcnow()}}
     )
 
-    return jsonify({"message": "Archive toggled"})
+    return jsonify({"message": f"{result.modified_count} notes moved to trash"})
+
+# ================= 🔥 BULK ARCHIVE =================
+@notes_bp.route("/bulk-archive", methods=["POST"])
+@jwt_required()
+def bulk_archive():
+    user_id = str(get_jwt_identity())
+    data = get_json_request()
+    note_ids = data.get("note_ids", [])
+
+    if not note_ids:
+        return jsonify({"message":"No notes provided"}), 400
+
+    result = mongo.db.notes.update_many(
+        {"_id": {"$in": [ObjectId(nid) for nid in note_ids]}, "user_id": user_id, "trashed": {"$ne": True}},
+        {"$set": {"archived": True}}
+    )
+
+    return jsonify({"message": f"{result.modified_count} notes archived"})
