@@ -34,17 +34,8 @@
     <script src="js/main.js"></script>
 
     <script>
-        // Override loadNotes behavior for archive page
-        async function loadNotes() {
-            let notes = await apiRequest("/notes");
-
-            // ✅ ONLY archived
-            notes = notes.filter(n => n.archived);
-
-            renderNotes(notes);
-        }
-
-        loadNotes();
+        // 🔥 NEW: tell main.js this is archive page
+        window.isArchivePage = true;
     </script>
 
 </body>
