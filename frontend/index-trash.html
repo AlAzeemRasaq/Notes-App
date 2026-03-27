@@ -34,14 +34,26 @@
     <script src="js/main.js"></script>
 
     <script>
-        // Override loadNotes behavior for trash page
+        // 🔥 Tell main.js this is the trash page
+        window.isTrashPage = true;
+
+        // 🔥 Load only trashed notes
         async function loadNotes() {
-            let notes = await apiRequest("/notes");
+            let notes = await apiRequest("/notes/trash");
+            allNotes = notes; // update global state
+            applyFilters();   // apply search/tag filters if any
+        }
 
-            // ✅ ONLY trashed notes
-            notes = notes.filter(n => n.trashed);
+        // 🔥 Trash-specific functions
+        async function restoreNote(id) {
+            await apiRequest(`/notes/restore/${id}`, "PUT");
+            await loadNotes();
+        }
 
-            renderNotes(notes);
+        async function permanentDelete(id) {
+            if (!confirm("Permanently delete this note?")) return;
+            await apiRequest(`/notes/permanent/${id}`, "DELETE");
+            await loadNotes();
         }
 
         loadNotes();
