@@ -54,6 +54,18 @@
             <button id="addNoteBtn">Add Note</button>
         </div>
 
+        <!-- 🔥 SELECT MODE BUTTON -->
+        <div class="bulk-actions">
+            <button id="selectModeBtn">Select</button>
+
+            <div id="bulkOptions" style="display:none; margin-top:10px;">
+                <input type="checkbox" id="selectAllNotes"> Select All
+                <button id="bulkDelete">Delete Selected</button>
+                <button id="bulkArchive">Archive Selected</button>
+                <button id="cancelSelectBtn">Cancel</button>
+            </div>
+        </div>
+
         <!-- Notes Grid -->
         <div id="notesContainer" class="notes-grid"></div>
     </div>
@@ -65,7 +77,6 @@
 
     <!-- Rich Text + Drag & Drop -->
     <script>
-        // Rich text formatting
         function formatText(command) {
             if (command === 'createLink') {
                 const url = prompt('Enter the URL');
@@ -75,9 +86,7 @@
             }
         }
 
-        function triggerImageUpload() {
-            document.getElementById('imageUploader').click();
-        }
+        function triggerImageUpload() { document.getElementById('imageUploader').click(); }
 
         document.getElementById('imageUploader').addEventListener('change', function () {
             const file = this.files[0];
@@ -101,7 +110,6 @@
             else alert('Invalid embed code');
         }
 
-        // Drag & drop for images into editor
         const editor = document.getElementById('noteContent');
         editor.addEventListener('dragover', e => e.preventDefault());
         editor.addEventListener('drop', e => {
@@ -117,11 +125,10 @@
             reader.readAsDataURL(file);
         });
 
-        // Paste images
         editor.addEventListener('paste', e => {
             const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (!items[i].type.startsWith('image/')) continue;
+            for (let i=0;i<items.length;i++){
+                if(!items[i].type.startsWith('image/')) continue;
                 const file = items[i].getAsFile();
                 const reader = new FileReader();
                 reader.onload = e => {
