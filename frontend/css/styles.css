@@ -162,6 +162,7 @@ button:hover {
     background: #2a2a40;
     padding: 15px;
     border-radius: 12px;
+    position: relative; /* for checkbox */
     transition: all 0.2s ease;
 }
 
@@ -200,4 +201,16 @@ body.light .note {
 
 body.light .sidebar {
     background: #ddd;
+}
+
+/* ===== NOTE CHECKBOX ===== */
+.note-checkbox {
+    display: none; /* hidden by default */
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.note.select-mode .note-checkbox {
+    display: block;
 }
