@@ -57,3 +57,31 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     throw err;
   }
 }
+
+
+// ======================================================
+// 🔥 NEW: TRASH SYSTEM API FUNCTIONS
+// ======================================================
+
+// =========================
+// Get Trash Notes
+// =========================
+async function getTrashNotes() {
+  return await apiRequest("/notes/trash", "GET");
+}
+
+
+// =========================
+// Restore Note
+// =========================
+async function restoreNote(id) {
+  return await apiRequest(`/notes/restore/${id}`, "PUT");
+}
+
+
+// =========================
+// Permanent Delete
+// =========================
+async function deleteNotePermanently(id) {
+  return await apiRequest(`/notes/permanent/${id}`, "DELETE");
+}
