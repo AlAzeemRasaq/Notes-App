@@ -56,13 +56,16 @@ def create_note():
 
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
+    tags = data.get("tags", [])
+    if not isinstance(tags, list):
+        tags = []
 
-    # 🔥 NEW: get next position
+    # 🔥 NEW: get next position safely
     last_note = mongo.db.notes.find_one(
         {"user_id": user_id},
         sort=[("position", -1)]
     )
-    next_position = (last_note["position"] + 1) if last_note else 0
+    next_position = (last_note.get("position", -1) + 1) if last_note else 0
 
     note = {
         "user_id": user_id,
@@ -72,11 +75,9 @@ def create_note():
         "updated_at": datetime.utcnow(),
         "pinned": False,
         "archived": False,
-        "tags": data.get("tags", []),
+        "tags": tags,
         "trashed": False,
         "trashed_at": None,
-
-        # 🔥 NEW FIELD
         "position": next_position
     }
 
@@ -94,7 +95,6 @@ def get_notes():
 
     if search_query:
         terms = search_query.split()
-
         regex_conditions = []
         for term in terms:
             regex = {"$regex": term, "$options": "i"}
@@ -105,11 +105,10 @@ def get_notes():
                     {"tags": regex}
                 ]
             })
-
         query["$and"] = regex_conditions
 
     notes = []
-    for note in mongo.db.notes.find(query, sort=[("position", 1)]):  # 🔥 CHANGED
+    for note in mongo.db.notes.find(query, sort=[("position", 1)]):
         note["_id"] = str(note["_id"])
         notes.append(note)
 
@@ -139,13 +138,11 @@ def reorder_notes():
 @jwt_required()
 def get_trash_notes():
     user_id = str(get_jwt_identity())
-
     notes = []
     for note in mongo.db.notes.find({"user_id": user_id, "trashed": True},
                                     sort=[("trashed_at",-1)]):
         note["_id"] = str(note["_id"])
         notes.append(note)
-
     return jsonify(notes)
 
 # ================= UPDATE NOTE =================
@@ -183,7 +180,6 @@ def update_note(id):
 @jwt_required()
 def delete_note(id):
     user_id = str(get_jwt_identity())
-
     result = mongo.db.notes.update_one(
         {"_id": ObjectId(id), "user_id": user_id},
         {"$set": {"trashed": True, "trashed_at": datetime.utcnow()}}
@@ -199,7 +195,6 @@ def delete_note(id):
 @jwt_required()
 def restore_note(id):
     user_id = str(get_jwt_identity())
-
     result = mongo.db.notes.update_one(
         {"_id": ObjectId(id), "user_id": user_id},
         {"$set": {"trashed": False, "trashed_at": None}}
@@ -215,7 +210,6 @@ def restore_note(id):
 @jwt_required()
 def permanent_delete(id):
     user_id = str(get_jwt_identity())
-
     result = mongo.db.notes.delete_one({"_id": ObjectId(id), "user_id": user_id})
 
     if result.deleted_count == 0:
@@ -228,7 +222,6 @@ def permanent_delete(id):
 @jwt_required()
 def toggle_pin(id):
     user_id = str(get_jwt_identity())
-
     note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}})
     if not note:
         return jsonify({"message":"Note not found"}), 404
@@ -245,7 +238,6 @@ def toggle_pin(id):
 @jwt_required()
 def toggle_archive(id):
     user_id = str(get_jwt_identity())
-
     note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}})
     if not note:
         return jsonify({"message":"Note not found"}), 404
