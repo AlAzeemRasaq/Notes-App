@@ -41,6 +41,13 @@ def create_note():
     if not title and not content:
         return jsonify({"message":"Cannot save empty note"}), 400
 
+    # 🔥 NEW: get next position
+    last_note = mongo.db.notes.find_one(
+        {"user_id": user_id},
+        sort=[("position", -1)]
+    )
+    next_position = (last_note["position"] + 1) if last_note else 0
+
     note = {
         "user_id": user_id,
         "title": bleach.clean(title, strip=True),
@@ -49,8 +56,11 @@ def create_note():
         "pinned": False,
         "archived": False,
         "tags": data.get("tags", []),
-        "trashed": False,       # 🔥 soft delete support
-        "trashed_at": None
+        "trashed": False,
+        "trashed_at": None,
+
+        # 🔥 NEW FIELD
+        "position": next_position
     }
 
     result = mongo.db.notes.insert_one(note)
@@ -75,19 +85,37 @@ def get_notes():
                 "$or": [
                     {"title": regex},
                     {"content": regex},
-                    {"tags": regex}  # 🔥 search tags too
+                    {"tags": regex}
                 ]
             })
 
-        # 🔥 ALL terms must match somewhere
         query["$and"] = regex_conditions
 
     notes = []
-    for note in mongo.db.notes.find(query, sort=[("pinned",-1),("updated_at",-1)]):
+    for note in mongo.db.notes.find(query, sort=[("position", 1)]):  # 🔥 CHANGED
         note["_id"] = str(note["_id"])
         notes.append(note)
 
     return jsonify(notes)
+
+# ================= 🔥 REORDER NOTES =================
+@notes_bp.route("/reorder", methods=["PUT"])
+@jwt_required()
+def reorder_notes():
+    user_id = str(get_jwt_identity())
+    data = get_json_request()
+    ordered_ids = data.get("ordered_ids", [])
+
+    if not ordered_ids:
+        return jsonify({"message": "No order provided"}), 400
+
+    for index, note_id in enumerate(ordered_ids):
+        mongo.db.notes.update_one(
+            {"_id": ObjectId(note_id), "user_id": user_id},
+            {"$set": {"position": index}}
+        )
+
+    return jsonify({"message": "Order updated"})
 
 # ================= GET TRASH =================
 @notes_bp.route("/trash", methods=["GET"])
@@ -187,7 +215,11 @@ def toggle_pin(id):
     if not note:
         return jsonify({"message":"Note not found"}), 404
 
-    mongo.db.notes.update_one({"_id": ObjectId(id)}, {"$set": {"pinned": not note.get("pinned", False)}})
+    mongo.db.notes.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": {"pinned": not note.get("pinned", False)}}
+    )
+
     return jsonify({"message":"Pin toggled"})
 
 # ================= ARCHIVE NOTE =================
@@ -200,10 +232,14 @@ def toggle_archive(id):
     if not note:
         return jsonify({"message":"Note not found"}), 404
 
-    mongo.db.notes.update_one({"_id": ObjectId(id)}, {"$set": {"archived": not note.get("archived", False)}})
+    mongo.db.notes.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": {"archived": not note.get("archived", False)}}
+    )
+
     return jsonify({"message":"Archive toggled"})
 
-# ================= 🔥 BULK DELETE =================
+# ================= BULK DELETE =================
 @notes_bp.route("/bulk-delete", methods=["POST"])
 @jwt_required()
 def bulk_delete():
@@ -221,7 +257,7 @@ def bulk_delete():
 
     return jsonify({"message": f"{result.modified_count} notes moved to trash"})
 
-# ================= 🔥 BULK ARCHIVE =================
+# ================= BULK ARCHIVE =================
 @notes_bp.route("/bulk-archive", methods=["POST"])
 @jwt_required()
 def bulk_archive():
