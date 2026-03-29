@@ -42,12 +42,21 @@ async function loadNotes(search = "") {
     applyFilters(); // Always go through filter system
 }
 
-// ===== APPLY FILTERS (SEARCH + TAG) =====
+// ===== 🔥 IMPROVED APPLY FILTERS (SEARCH + TAG + RANKING) =====
 function applyFilters() {
+    const terms = currentSearch.split(/\s+/).filter(Boolean);
+
     let filtered = allNotes.filter(note => {
-        const matchesSearch =
-            (note.title || "").toLowerCase().includes(currentSearch) ||
-            (note.content || "").toLowerCase().includes(currentSearch);
+        const title = (note.title || "").toLowerCase();
+        const content = (note.content || "").toLowerCase();
+        const tags = (note.tags || []).map(t => t.toLowerCase());
+
+        // Every search term must match somewhere
+        const matchesSearch = terms.length === 0 || terms.every(term =>
+            title.includes(term) ||
+            content.includes(term) ||
+            tags.some(tag => tag.includes(term))
+        );
 
         const matchesTag = currentTag
             ? (note.tags || []).includes(currentTag)
@@ -55,6 +64,28 @@ function applyFilters() {
 
         return matchesSearch && matchesTag;
     });
+
+    // 🔥 Relevance sorting
+    if (terms.length > 0) {
+        filtered.sort((a, b) => {
+            const score = (note) => {
+                let s = 0;
+                const title = (note.title || "").toLowerCase();
+                const content = (note.content || "").toLowerCase();
+                const tags = (note.tags || []).join(" ").toLowerCase();
+
+                terms.forEach(term => {
+                    if (title.includes(term)) s += 3;
+                    if (content.includes(term)) s += 2;
+                    if (tags.includes(term)) s += 1;
+                });
+
+                return s;
+            };
+
+            return score(b) - score(a);
+        });
+    }
 
     renderNotes(filtered);
 }
@@ -98,12 +129,11 @@ function renderNotes(notes) {
             if (checkbox.checked) selectedNotes.add(note._id);
             else selectedNotes.delete(note._id);
 
-            // Update select all checkbox state
             const allCheckboxes = document.querySelectorAll(".note-checkbox");
             document.getElementById("selectAllNotes").checked =
                 Array.from(allCheckboxes).every(cb => cb.checked);
         });
-        div.appendChild(checkbox); // append first so content comes after
+        div.appendChild(checkbox);
 
         // ===== NOTE CONTENT =====
         const contentContainer = document.createElement("div");
@@ -162,7 +192,7 @@ function renderNotes(notes) {
         contentContainer.append(titleEl, contentEl, tagsEl, actionsEl);
         div.appendChild(contentContainer);
 
-        // ===== DRAG EVENTS (skip if trash page) =====
+        // ===== DRAG EVENTS =====
         if (!isTrashPage) {
             div.addEventListener("dragstart", () => {
                 draggedNoteId = note._id;
@@ -291,7 +321,7 @@ async function permanentDeleteNote(id) {
     await loadNotes(currentSearch);
 }
 
-// ===== 🔥 BULK ACTIONS =====
+// ===== BULK ACTIONS =====
 document.getElementById("selectAllNotes")?.addEventListener("change", (e) => {
     const checkboxes = document.querySelectorAll(".note-checkbox");
     selectedNotes.clear();
@@ -322,13 +352,11 @@ document.getElementById("selectModeBtn")?.addEventListener("click", () => {
     selectMode = !selectMode;
     document.getElementById("bulkOptions").style.display = selectMode ? "block" : "none";
 
-    // Clear selections when exiting select mode
     if (!selectMode) {
         selectedNotes.clear();
         document.getElementById("selectAllNotes").checked = false;
     }
 
-    // Toggle visibility of checkboxes
     document.querySelectorAll(".note-checkbox").forEach(cb => {
         cb.style.display = selectMode ? "inline-block" : "none";
         if (!selectMode) cb.checked = false;
