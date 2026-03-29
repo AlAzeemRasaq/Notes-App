@@ -42,6 +42,14 @@ async function loadNotes(search = "") {
     applyFilters(); // Always go through filter system
 }
 
+// ===== DATE FORMATTING =====
+function formatDate(dateString) {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    return date.toLocaleString(); // simple + clean
+}
+
 // ===== 🔥 IMPROVED APPLY FILTERS (SEARCH + TAG + RANKING) =====
 function applyFilters() {
     const terms = currentSearch.split(/\s+/).filter(Boolean);
@@ -155,6 +163,10 @@ function renderNotes(notes) {
             tagsEl.appendChild(span);
         });
 
+        const updatedEl = document.createElement("small");
+        updatedEl.className = "note-updated";
+        updatedEl.textContent = note.updated_at ? `Last edited: ${formatDate(note.updated_at)}` : "";
+
         const actionsEl = document.createElement("div");
         actionsEl.className = "note-actions";
 
@@ -189,7 +201,7 @@ function renderNotes(notes) {
             actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn);
         }
 
-        contentContainer.append(titleEl, contentEl, tagsEl, actionsEl);
+        contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
 
         // ===== DRAG EVENTS =====
