@@ -17,24 +17,23 @@ class Note(db.Model):
     content = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    # ✅ EXISTING
     pinned = db.Column(db.Boolean, default=False)
     archived = db.Column(db.Boolean, default=False)
 
-    # 🔧 FIX: avoid mutable default bug (VERY important)
     tags = db.Column(db.JSON, default=list)
 
-    # soft delete support
     trashed = db.Column(db.Boolean, default=False, nullable=False)
-
-    # 🔧 OPTIONAL (future-proofing): track when note was trashed
     trashed_at = db.Column(db.DateTime, nullable=True)
 
-    # 🔥 NEW: ORDERING
     position = db.Column(db.Integer, default=0)
 
-    # 🔥 (optional but useful)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # ✅ ADD / UPDATE THESE
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
 
 
 # 3️⃣ CATEGORIES TABLE
