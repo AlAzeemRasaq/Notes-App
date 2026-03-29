@@ -66,10 +66,21 @@ def get_notes():
     query = {"user_id": user_id, "trashed": {"$ne": True}}
 
     if search_query:
-        query["$or"] = [
-            {"title": {"$regex": search_query, "$options": "i"}},
-            {"content": {"$regex": search_query, "$options": "i"}}
-        ]
+        terms = search_query.split()
+
+        regex_conditions = []
+        for term in terms:
+            regex = {"$regex": term, "$options": "i"}
+            regex_conditions.append({
+                "$or": [
+                    {"title": regex},
+                    {"content": regex},
+                    {"tags": regex}  # 🔥 search tags too
+                ]
+            })
+
+        # 🔥 ALL terms must match somewhere
+        query["$and"] = regex_conditions
 
     notes = []
     for note in mongo.db.notes.find(query, sort=[("pinned",-1),("updated_at",-1)]):
