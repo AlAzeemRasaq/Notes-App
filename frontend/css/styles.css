@@ -214,3 +214,13 @@ body.light .sidebar {
 .note.select-mode .note-checkbox {
     display: block;
 }
+
+/* ===== LAST EDITED TIMESTAMP ===== */
+.note-updated {
+    display: block;          /* ensure it’s on its own line */
+    font-size: 0.75rem;      /* small text */
+    color: #666;             /* muted grey for subtlety */
+    margin-top: 4px;         /* small gap below content */
+    text-align: right;       /* align to the right of the note */
+    font-style: italic;      /* optional, looks nice */
+}
