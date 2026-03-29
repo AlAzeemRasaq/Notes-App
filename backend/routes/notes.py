@@ -68,6 +68,7 @@ def create_note():
         "user_id": user_id,
         "title": bleach.clean(title, strip=True),
         "content": sanitize_html(content),
+        "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
         "pinned": False,
         "archived": False,
