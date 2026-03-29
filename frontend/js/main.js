@@ -240,6 +240,10 @@ async function reorderNotes(draggedId, targetId) {
 
     allNotes = notes;
 
+    // 🔥 SAVE ORDER TO BACKEND
+    const orderedIds = notes.map(n => n._id);
+    await apiRequest("/notes/reorder", "PUT", { ordered_ids: orderedIds });
+
     applyFilters();
 }
 
