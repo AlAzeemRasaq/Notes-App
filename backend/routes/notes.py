@@ -27,6 +27,21 @@ def get_json_request():
         return data or {}
     except:
         return {}
+    
+def validate_note_input(data):
+    title = (data.get("title") or "").strip()
+    content = (data.get("content") or "").strip()
+
+    if not title and not content:
+        return "Note cannot be empty"
+
+    if len(title) > 120:
+        return "Title too long"
+
+    if len(content) > 10000:
+        return "Content too long"
+
+    return None
 
 # ================= CREATE NOTE =================
 @notes_bp.route("", methods=["POST"])
@@ -35,11 +50,12 @@ def create_note():
     user_id = str(get_jwt_identity())
     data = get_json_request()
 
+    error = validate_note_input(data)
+    if error:
+        return jsonify({"message": error}), 400
+
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
-
-    if not title and not content:
-        return jsonify({"message":"Cannot save empty note"}), 400
 
     # 🔥 NEW: get next position
     last_note = mongo.db.notes.find_one(
@@ -138,11 +154,12 @@ def update_note(id):
     user_id = str(get_jwt_identity())
     data = get_json_request()
 
+    error = validate_note_input(data)
+    if error:
+        return jsonify({"message": error}), 400
+
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
-
-    if not title and not content:
-        return jsonify({"message":"Cannot save empty note"}), 400
 
     updated_fields = {
         "title": bleach.clean(title, strip=True),
