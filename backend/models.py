@@ -24,11 +24,17 @@ class Note(db.Model):
     # 🔧 FIX: avoid mutable default bug (VERY important)
     tags = db.Column(db.JSON, default=list)
 
-    # 🔥 NEW: soft delete support
+    # soft delete support
     trashed = db.Column(db.Boolean, default=False, nullable=False)
 
     # 🔧 OPTIONAL (future-proofing): track when note was trashed
     trashed_at = db.Column(db.DateTime, nullable=True)
+
+    # 🔥 NEW: ORDERING
+    position = db.Column(db.Integer, default=0)
+
+    # 🔥 (optional but useful)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # 3️⃣ CATEGORIES TABLE
