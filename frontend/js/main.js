@@ -13,17 +13,15 @@ let selectMode = false; // toggles checkbox mode
 
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
-    let url;
+    let notes;
 
     if (window.isTrashPage) {
-        url = "/notes/trash";
+        notes = await getTrashNotes();
     } else {
-        url = search
-            ? `/notes?search=${encodeURIComponent(search)}`
-            : "/notes";
+        notes = search
+            ? await getNotes(search)
+            : await getNotes();
     }
-
-    let notes = await apiRequest(url);
 
     const isArchivePage = window.isArchivePage;
 
@@ -59,7 +57,6 @@ function applyFilters() {
         const content = (note.content || "").toLowerCase();
         const tags = (note.tags || []).map(t => t.toLowerCase());
 
-        // Every search term must match somewhere
         const matchesSearch = terms.length === 0 || terms.every(term =>
             title.includes(term) ||
             content.includes(term) ||
@@ -173,11 +170,11 @@ function renderNotes(notes) {
         if (isTrashPage) {
             const restoreBtn = document.createElement("button");
             restoreBtn.textContent = "♻️ Restore";
-            restoreBtn.onclick = () => restoreNote(note._id);
+            restoreBtn.onclick = () => restoreNoteAction(note._id);
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "❌ Delete";
-            deleteBtn.onclick = () => permanentDeleteNote(note._id);
+            deleteBtn.onclick = () => permanentDeleteNoteAction(note._id);
 
             actionsEl.appendChild(restoreBtn);
             actionsEl.appendChild(deleteBtn);
@@ -188,15 +185,15 @@ function renderNotes(notes) {
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Delete";
-            deleteBtn.onclick = () => deleteNote(note._id);
+            deleteBtn.onclick = () => deleteNoteAction(note._id);
 
             const pinBtn = document.createElement("button");
             pinBtn.textContent = "📌";
-            pinBtn.onclick = () => togglePin(note._id);
+            pinBtn.onclick = () => togglePinAction(note._id);
 
             const archiveBtn = document.createElement("button");
             archiveBtn.textContent = isArchivePage ? "↩️" : "📦";
-            archiveBtn.onclick = () => toggleArchive(note._id);
+            archiveBtn.onclick = () => toggleArchiveAction(note._id);
 
             actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn);
         }
@@ -228,7 +225,7 @@ function renderNotes(notes) {
             div.addEventListener("drop", async () => {
                 div.classList.remove("drag-over");
                 if (!draggedNoteId || draggedNoteId === note._id) return;
-                await reorderNotes(draggedNoteId, note._id);
+                await reorderNotesAction(draggedNoteId, note._id);
             });
         }
 
@@ -239,7 +236,7 @@ function renderNotes(notes) {
 }
 
 // ===== DRAG REORDER =====
-async function reorderNotes(draggedId, targetId) {
+async function reorderNotesAction(draggedId, targetId) {
     let notes = [...allNotes];
 
     const draggedIndex = notes.findIndex(n => n._id === draggedId);
@@ -252,55 +249,70 @@ async function reorderNotes(draggedId, targetId) {
 
     allNotes = notes;
 
-    // 🔥 SAVE ORDER TO BACKEND
     const orderedIds = notes.map(n => n._id);
-    await apiRequest("/notes/reorder", "PUT", { ordered_ids: orderedIds });
+    await reorderNotes(orderedIds);
 
     applyFilters();
 }
 
 // ===== CREATE NOTE =====
-async function createNote() {
-    const title = document.getElementById("noteTitle").value;
-    const content = document.getElementById("noteContent").innerHTML;
+async function createNoteAction() {
+    const titleEl = document.getElementById("noteTitle");
+    const contentEl = document.getElementById("noteContent");
 
-    if (!validateNote(title, content)) return;
-    await apiRequest("/notes", "POST", { title, content, tags: [] });
+    const title = (titleEl.value || "").trim();
+    const content = (contentEl.innerHTML || "").trim();
 
-    document.getElementById("noteTitle").value = "";
-    document.getElementById("noteContent").innerHTML = "";
+    if (!title && !content) {
+        alert("Note cannot be empty!");
+        return;
+    }
 
-    await loadNotes(currentSearch);
+    try {
+        const newNote = await createNote(title, content, []);
+        // Add new note locally to allNotes so UI updates instantly
+        allNotes.push({
+            _id: newNote._id,
+            title: newNote.title,
+            content: newNote.content,
+            tags: newNote.tags,
+            pinned: false,
+            archived: false,
+            trashed: false,
+            position: allNotes.length,
+            created_at: newNote.created_at,
+            updated_at: newNote.updated_at
+        });
+
+        // Reset input fields
+        titleEl.value = "";
+        contentEl.innerHTML = "";
+
+        // Refresh notes UI
+        applyFilters();
+    } catch (err) {
+        console.error("Failed to create note:", err);
+        alert("Failed to create note. See console for details.");
+    }
 }
 
 // ===== DELETE NOTE =====
-async function deleteNote(id) {
+async function deleteNoteAction(id) {
     if (!confirm("Delete this note?")) return;
-    await apiRequest(`/notes/${id}`, "DELETE");
+    await deleteNote(id);
     await loadNotes(currentSearch);
 }
 
 // ===== PIN NOTE =====
-async function togglePin(id) {
-    await apiRequest(`/notes/pin/${id}`, "PUT");
+async function togglePinAction(id) {
+    await togglePin(id);
     await loadNotes(currentSearch);
 }
 
 // ===== ARCHIVE NOTE =====
-async function toggleArchive(id) {
-    await apiRequest(`/notes/archive/${id}`, "PUT");
+async function toggleArchiveAction(id) {
+    await toggleArchive(id);
     await loadNotes(currentSearch);
-}
-
-// ===== TAG FILTER =====
-function filterByTag(tag) {
-    currentTag = currentTag === tag ? null : tag;
-    applyFilters();
-}
-
-// ===== THEME TOGGLE =====
-function toggleTheme() {
-    document.body.classList.toggle("light");
 }
 
 // ===== EDIT NOTE =====
@@ -308,35 +320,61 @@ async function editNote(id) {
     const note = allNotes.find(n => n._id === id);
     if (!note) return;
 
-    document.getElementById("noteTitle").value = note.title || "";
-    document.getElementById("noteContent").innerHTML = note.content || "";
+    const titleEl = document.getElementById("noteTitle");
+    const contentEl = document.getElementById("noteContent");
+
+    titleEl.value = note.title || "";
+    contentEl.innerHTML = note.content || "";
 
     document.getElementById("addNoteBtn").onclick = async () => {
-        const updatedTitle = document.getElementById("noteTitle").value;
-        const updatedContent = document.getElementById("noteContent").innerHTML;
+        const updatedTitle = (titleEl.value || "").trim();
+        const updatedContent = (contentEl.innerHTML || "").trim();
 
-        if (!validateNote(title, content)) return;
-        await apiRequest(`/notes/${id}`, "PUT", { title: updatedTitle, content: updatedContent });
+        if (!updatedTitle && !updatedContent) {
+            alert("Note cannot be empty!");
+            return;
+        }
 
-        document.getElementById("noteTitle").value = "";
-        document.getElementById("noteContent").innerHTML = "";
+        try {
+            const updatedNote = await updateNote(id, updatedTitle, updatedContent, note.tags || []);
+            // Update local note
+            Object.assign(note, {
+                title: updatedTitle,
+                content: updatedContent,
+                updated_at: new Date().toISOString()
+            });
 
-        document.getElementById("addNoteBtn").onclick = createNote;
+            // Reset input fields
+            titleEl.value = "";
+            contentEl.innerHTML = "";
 
-        await loadNotes(currentSearch);
+            // Restore button to create mode
+            document.getElementById("addNoteBtn").onclick = createNoteAction;
+
+            applyFilters();
+        } catch (err) {
+            console.error("Failed to update note:", err);
+            alert("Failed to update note. See console for details.");
+        }
     };
 }
 
 // ===== TRASH ACTIONS =====
-async function restoreNote(id) {
-    await apiRequest(`/notes/restore/${id}`, "PUT");
+async function restoreNoteAction(id) {
+    await restoreNote(id);
     await loadNotes(currentSearch);
 }
 
-async function permanentDeleteNote(id) {
+async function permanentDeleteNoteAction(id) {
     if (!confirm("Permanently delete this note?")) return;
-    await apiRequest(`/notes/permanent/${id}`, "DELETE");
+    await deleteNotePermanently(id);
     await loadNotes(currentSearch);
+}
+
+// ===== TAG FILTER =====
+function filterByTag(tag) {
+    currentTag = currentTag === tag ? null : tag;
+    applyFilters();
 }
 
 // ===== BULK ACTIONS =====
@@ -352,7 +390,7 @@ document.getElementById("selectAllNotes")?.addEventListener("change", (e) => {
 document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
     const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => deleteNote(id)));
+    await Promise.all(ids.map(id => deleteNoteAction(id)));
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
 });
@@ -360,7 +398,7 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
 document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
     const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => toggleArchive(id)));
+    await Promise.all(ids.map(id => toggleArchiveAction(id)));
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
 });
@@ -392,6 +430,11 @@ document.getElementById("cancelSelectBtn")?.addEventListener("click", () => {
     });
 });
 
+// ===== THEME TOGGLE =====
+function toggleTheme() {
+    document.body.classList.toggle("light");
+}
+
 // ===== INIT =====
-document.getElementById("addNoteBtn")?.addEventListener("click", createNote);
+document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
