@@ -252,6 +252,7 @@ async function createNote() {
     const title = document.getElementById("noteTitle").value;
     const content = document.getElementById("noteContent").innerHTML;
 
+    if (!validateNote(title, content)) return;
     await apiRequest("/notes", "POST", { title, content, tags: [] });
 
     document.getElementById("noteTitle").value = "";
@@ -302,6 +303,7 @@ async function editNote(id) {
         const updatedTitle = document.getElementById("noteTitle").value;
         const updatedContent = document.getElementById("noteContent").innerHTML;
 
+        if (!validateNote(title, content)) return;
         await apiRequest(`/notes/${id}`, "PUT", { title: updatedTitle, content: updatedContent });
 
         document.getElementById("noteTitle").value = "";
