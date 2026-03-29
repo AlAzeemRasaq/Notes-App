@@ -27,7 +27,7 @@ def get_json_request():
         return data or {}
     except:
         return {}
-    
+
 def validate_note_input(data):
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
@@ -54,35 +54,40 @@ def create_note():
     if error:
         return jsonify({"message": error}), 400
 
-    title = (data.get("title") or "").strip()
-    content = (data.get("content") or "").strip()
-    tags = data.get("tags", [])
+    title = bleach.clean((data.get("title") or "").strip(), strip=True)
+    content = sanitize_html((data.get("content") or "").strip())
+    tags = data.get("tags")
     if not isinstance(tags, list):
         tags = []
 
-    # 🔥 NEW: get next position safely
-    last_note = mongo.db.notes.find_one(
-        {"user_id": user_id},
-        sort=[("position", -1)]
-    )
+    # Determine next position
+    last_note = mongo.db.notes.find_one({"user_id": user_id}, sort=[("position", -1)])
     next_position = (last_note.get("position", -1) + 1) if last_note else 0
 
+    now = datetime.utcnow()
     note = {
         "user_id": user_id,
-        "title": bleach.clean(title, strip=True),
-        "content": sanitize_html(content),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "title": title,
+        "content": content,
+        "tags": tags,
         "pinned": False,
         "archived": False,
-        "tags": tags,
         "trashed": False,
         "trashed_at": None,
-        "position": next_position
+        "position": next_position,
+        "created_at": now,
+        "updated_at": now
     }
 
     result = mongo.db.notes.insert_one(note)
-    return jsonify({"_id": str(result.inserted_id)}), 201
+    return jsonify({
+        "_id": str(result.inserted_id),
+        "title": title,
+        "content": content,
+        "tags": tags,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat()
+    }), 201
 
 # ================= READ NOTES =================
 @notes_bp.route("", methods=["GET"])
@@ -114,7 +119,7 @@ def get_notes():
 
     return jsonify(notes)
 
-# ================= 🔥 REORDER NOTES =================
+# ================= REORDER NOTES =================
 @notes_bp.route("/reorder", methods=["PUT"])
 @jwt_required()
 def reorder_notes():
@@ -133,7 +138,7 @@ def reorder_notes():
 
     return jsonify({"message": "Order updated"})
 
-# ================= GET TRASH =================
+# ================= TRASH =================
 @notes_bp.route("/trash", methods=["GET"])
 @jwt_required()
 def get_trash_notes():
@@ -156,12 +161,12 @@ def update_note(id):
     if error:
         return jsonify({"message": error}), 400
 
-    title = (data.get("title") or "").strip()
-    content = (data.get("content") or "").strip()
+    title = bleach.clean((data.get("title") or "").strip(), strip=True)
+    content = sanitize_html((data.get("content") or "").strip())
 
     updated_fields = {
-        "title": bleach.clean(title, strip=True),
-        "content": sanitize_html(content),
+        "title": title,
+        "content": content,
         "updated_at": datetime.utcnow()
     }
 
