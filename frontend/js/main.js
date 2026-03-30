@@ -12,9 +12,22 @@ let currentTag = null;
 let selectedNotes = new Set();
 let selectMode = false; // toggles checkbox mode
 
+// ===== UI STATES =====
+function showLoading() {
+    const container = document.getElementById("notesContainer");
+    container.innerHTML = `<div class="state-message">Loading notes...</div>`;
+}
+
+function showEmpty(message = "No notes yet") {
+    const container = document.getElementById("notesContainer");
+    container.innerHTML = `<div class="state-message">${message}</div>`;
+}
+
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId; // 🆕 capture this request's ID
+
+    showLoading();
 
     let notes;
 
@@ -31,13 +44,9 @@ async function loadNotes(search = "") {
 
     const isArchivePage = window.isArchivePage;
 
-    // Archive filtering (skip trash)
+    // Archive filtering and keep pin sorting (skip trash)
     if (!window.isTrashPage) {
         notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
-    }
-
-    // Keep pin sorting (skip trash)
-    if (!window.isTrashPage) {
         notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
     }
 
@@ -75,6 +84,23 @@ function applyFilters() {
 
         return matchesSearch && matchesTag;
     });
+
+    // 🔥 EMPTY STATES
+    if (allNotes.length === 0) {
+        if (window.isTrashPage) {
+            showEmpty("Trash is empty 🗑️");
+        } else if (window.isArchivePage) {
+            showEmpty("No archived notes 📦");
+        } else {
+            showEmpty("No notes yet. Create one above ✍️");
+        }
+        return;
+    }
+
+    if (filtered.length === 0) {
+        showEmpty("No results found 🔍");
+        return;
+    }
 
     // 🔥 Relevance sorting
     if (terms.length > 0) {
