@@ -221,7 +221,7 @@ function renderNotes(notes) {
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Delete";
-            deleteBtn.onclick = () => deleteNoteAction(note._id);
+            deleteBtn.onclick = () => deleteNoteWithUndo(note._id);
 
             const pinBtn = document.createElement("button");
             pinBtn.textContent = "📌";
@@ -333,15 +333,29 @@ async function createNoteAction() {
 }
 
 // ===== DELETE NOTE =====
-async function deleteNoteAction(id) {
-    if (!confirm("Delete this note?")) return;
+async function deleteNoteWithUndo(noteId) {
+    const noteElement = document.querySelector(`[data-id="${noteId}"]`);
+    if (!noteElement) return;
 
-    await deleteNote(id);
+    // 🧈 Animate out
+    noteElement.classList.add("deleting");
 
-    // 🧠 Remove locally
-    allNotes = allNotes.filter(n => n._id !== id);
+    // ⏳ Wait for animation
+    setTimeout(async () => {
+        const note = allNotes.find(n => n._id === noteId);
 
-    applyFilters();
+        // Save for undo
+        lastDeletedNote = note;
+
+        // Remove from UI instantly
+        allNotes = allNotes.filter(n => n._id !== noteId);
+        applyFilters();
+
+        // Call backend (soft delete)
+        await deleteNote(noteId);
+
+        showUndoToast();
+    }, 200);
 }
 
 // ===== PIN NOTE =====
