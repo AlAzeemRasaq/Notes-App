@@ -234,3 +234,39 @@ body.light .sidebar {
     color: #aaa;
     opacity: 0.8;
 }
+
+/* ===== UNDO TOAST ===== */
+.undo-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
+
+.undo-toast button {
+    background: none;
+    border: none;
+    color: #4da6ff;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.hidden {
+    display: none;
+}
+
+/* ===== DELETE ANIMATION ===== */
+.note.deleting {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: all 0.2s ease;
+}
