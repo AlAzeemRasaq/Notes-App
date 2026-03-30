@@ -4,6 +4,10 @@ let draggedNoteId = null;
 let searchTimeout = null;
 let currentRequestId = 0; // 🆕 tracks latest request
 
+// ===== DELETE UX STATE =====
+let lastDeletedNote = null;
+let undoTimeout = null;
+
 // 🔍 Unified filter state
 let currentSearch = "";
 let currentTag = null;
