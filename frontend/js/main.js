@@ -358,6 +358,35 @@ async function deleteNoteWithUndo(noteId) {
     }, 200);
 }
 
+// ===== UNDO TOAST =====
+function showUndoToast() {
+    const toast = document.getElementById("undoToast");
+    toast.classList.remove("hidden");
+
+    clearTimeout(undoTimeout);
+
+    undoTimeout = setTimeout(() => {
+        toast.classList.add("hidden");
+        lastDeletedNote = null;
+    }, 5000); // 5 sec window
+}
+
+// ===== UNDO DELETE =====
+async function undoDelete() {
+    if (!lastDeletedNote) return;
+
+    // Restore in backend
+    await restoreNote(lastDeletedNote._id);
+
+    // Restore in UI
+    allNotes.unshift(lastDeletedNote);
+    applyFilters();
+
+    lastDeletedNote = null;
+
+    document.getElementById("undoToast").classList.add("hidden");
+}
+
 // ===== PIN NOTE =====
 async function togglePinAction(id) {
     await togglePin(id);
