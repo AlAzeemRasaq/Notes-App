@@ -2,6 +2,7 @@
 let allNotes = [];
 let draggedNoteId = null;
 let searchTimeout = null;
+let currentRequestId = 0; // 🆕 tracks latest request
 
 // 🔍 Unified filter state
 let currentSearch = "";
@@ -13,6 +14,8 @@ let selectMode = false; // toggles checkbox mode
 
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
+    const requestId = ++currentRequestId; // 🆕 capture this request's ID
+
     let notes;
 
     if (window.isTrashPage) {
@@ -22,6 +25,9 @@ async function loadNotes(search = "") {
             ? await getNotes(search)
             : await getNotes();
     }
+
+    // 🛑 IGNORE outdated responses
+    if (requestId !== currentRequestId) return;
 
     const isArchivePage = window.isArchivePage;
 
@@ -100,7 +106,7 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
     const query = e.target.value.trim().toLowerCase();
     currentSearch = query;
 
-    // ⚡ Instant UI update
+    // ⚡ Instant UI update (local filtering)
     applyFilters();
 
     // ⏳ Backend refresh (debounced)
@@ -390,7 +396,8 @@ document.getElementById("selectAllNotes")?.addEventListener("change", (e) => {
 document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
     const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => deleteNoteAction(id)));
+    await Promise.all(ids.map(id => deleteNote(id)));
+    await loadNotes(currentSearch);
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
 });
@@ -398,7 +405,8 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
 document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
     const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => toggleArchiveAction(id)));
+    await Promise.all(ids.map(id => toggleArchive(id)));
+    await loadNotes(currentSearch);
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
 });
