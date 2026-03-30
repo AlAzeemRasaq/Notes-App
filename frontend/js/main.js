@@ -277,7 +277,7 @@ async function createNoteAction() {
     try {
         const newNote = await createNote(title, content, []);
         // Add new note locally to allNotes so UI updates instantly
-        allNotes.push({
+        allNotes.unshift({              // New notes appear at the top instantly
             _id: newNote._id,
             title: newNote.title,
             content: newNote.content,
@@ -305,20 +305,33 @@ async function createNoteAction() {
 // ===== DELETE NOTE =====
 async function deleteNoteAction(id) {
     if (!confirm("Delete this note?")) return;
+
     await deleteNote(id);
-    await loadNotes(currentSearch);
+
+    // 🧠 Remove locally
+    allNotes = allNotes.filter(n => n._id !== id);
+
+    applyFilters();
 }
 
 // ===== PIN NOTE =====
 async function togglePinAction(id) {
     await togglePin(id);
-    await loadNotes(currentSearch);
+
+    const note = allNotes.find(n => n._id === id);
+    if (note) note.pinned = !note.pinned;
+
+    applyFilters();
 }
 
 // ===== ARCHIVE NOTE =====
 async function toggleArchiveAction(id) {
     await toggleArchive(id);
-    await loadNotes(currentSearch);
+
+    const note = allNotes.find(n => n._id === id);
+    if (note) note.archived = !note.archived;
+
+    applyFilters();
 }
 
 // ===== EDIT NOTE =====
@@ -368,13 +381,21 @@ async function editNote(id) {
 // ===== TRASH ACTIONS =====
 async function restoreNoteAction(id) {
     await restoreNote(id);
-    await loadNotes(currentSearch);
+
+    // remove from trash view
+    allNotes = allNotes.filter(n => n._id !== id);
+
+    applyFilters();
 }
 
 async function permanentDeleteNoteAction(id) {
     if (!confirm("Permanently delete this note?")) return;
+
     await deleteNotePermanently(id);
-    await loadNotes(currentSearch);
+
+    allNotes = allNotes.filter(n => n._id !== id);
+
+    applyFilters();
 }
 
 // ===== TAG FILTER =====
@@ -395,20 +416,38 @@ document.getElementById("selectAllNotes")?.addEventListener("change", (e) => {
 
 document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
+
     const ids = Array.from(selectedNotes);
+
     await Promise.all(ids.map(id => deleteNote(id)));
-    await loadNotes(currentSearch);
+
+    // 🧠 remove locally
+    allNotes = allNotes.filter(n => !selectedNotes.has(n._id));
+
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
+
+    applyFilters();
 });
 
 document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
+
     const ids = Array.from(selectedNotes);
+
     await Promise.all(ids.map(id => toggleArchive(id)));
-    await loadNotes(currentSearch);
+
+    // 🧠 update locally
+    allNotes.forEach(n => {
+        if (selectedNotes.has(n._id)) {
+            n.archived = !n.archived;
+        }
+    });
+
     selectedNotes.clear();
     document.getElementById("selectAllNotes").checked = false;
+
+    applyFilters();
 });
 
 // ===== SELECT MODE TOGGLE =====
