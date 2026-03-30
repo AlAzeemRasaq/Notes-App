@@ -200,15 +200,25 @@ def delete_note(id):
 @jwt_required()
 def restore_note(id):
     user_id = str(get_jwt_identity())
-    result = mongo.db.notes.update_one(
-        {"_id": ObjectId(id), "user_id": user_id},
-        {"$set": {"trashed": False, "trashed_at": None}}
-    )
 
-    if result.matched_count == 0:
-        return jsonify({"message":"Note not found"}), 404
+    try:
+        result = mongo.db.notes.update_one(
+            {"_id": ObjectId(id), "user_id": user_id},
+            {
+                "$set": {
+                    "trashed": False,
+                    "trashed_at": None
+                }
+            }
+        )
 
-    return jsonify({"message":"Note restored"})
+        if result.matched_count == 0:
+            return jsonify({"message": "Note not found"}), 404
+
+        return jsonify({"message": "Note restored"}), 200
+
+    except Exception as e:
+        return jsonify({"message": "Failed to restore note", "error": str(e)}), 500
 
 # ================= PERMANENT DELETE =================
 @notes_bp.route("/permanent/<id>", methods=["DELETE"])
