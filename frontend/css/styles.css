@@ -224,3 +224,13 @@ body.light .sidebar {
     text-align: right;       /* align to the right of the note */
     font-style: italic;      /* optional, looks nice */
 }
+
+/* ===== UI STATES (LOADING / EMPTY) ===== */
+.state-message {
+    grid-column: 1 / -1; /* span full width of grid */
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 1.2rem;
+    color: #aaa;
+    opacity: 0.8;
+}
