@@ -86,7 +86,11 @@ async function getTrashNotes() {
 }
 
 async function restoreNote(id) {
-    return await apiRequest(`/notes/restore/${id}`, "PUT");
+    const res = await fetch(`/notes/${id}/restore`, {
+        method: "PUT",
+        headers: getAuthHeaders()
+    });
+    return res.json();
 }
 
 async function deleteNotePermanently(id) {
