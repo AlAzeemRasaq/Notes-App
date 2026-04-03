@@ -281,3 +281,82 @@ body.light .sidebar {
     transform: scale(0.95);
     transition: all 0.2s ease;
 }
+
+/* ===== COLOR PICKER CONTAINER ===== */
+.color-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* ===== COLOR DOTS BASE ===== */
+.color-option {
+    position: relative; /* 🔥 required for tooltip */
+
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+
+    cursor: pointer;
+    border: 2px solid transparent;
+
+    transition: transform 0.15s ease,
+                box-shadow 0.15s ease,
+                border 0.15s ease;
+}
+
+/* 🎯 Hover effect */
+.color-option:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ✅ Selected state (FIXED name) */
+.color-option.selected {
+    border: 2px solid #000;
+    transform: scale(1.25);
+}
+
+/* ===== TOOLTIP ===== */
+.color-option::after {
+    content: attr(data-color);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+
+    background: #000;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.color-option:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ===== ACTUAL COLORS ===== */
+.color-option.default {
+    background: #ffffff;
+    border: 2px solid #ccc;
+}
+
+.color-option.red { background: #ff6b6b; }
+.color-option.orange { background: #ffa94d; }
+.color-option.yellow { background: #ffd43b; }
+.color-option.green { background: #69db7c; }
+.color-option.cyan { background: #3bc9db; }
+.color-option.blue { background: #4dabf7; }
+.color-option.indigo { background: #5c7cfa; }
+.color-option.violet { background: #845ef7; }
+.color-option.purple { background: #cc5de8; }
+.color-option.pink { background: #f06595; }
