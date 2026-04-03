@@ -154,7 +154,7 @@ button:hover {
 /* ===== NOTES GRID ===== */
 .notes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 22%, 300px), 1fr)); /* 🔥 UPDATED */
+    grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 22%, 300px), 1fr));
     gap: 15px;
 }
 
@@ -330,6 +330,7 @@ body.light .sidebar {
     transform: translateX(-50%) translateY(0);
 }
 
+/* ===== PRESET COLORS ===== */
 .color-option.default { background: #ffffff; border: 2px solid #ccc; }
 .color-option.red { background: #ff6b6b; }
 .color-option.orange { background: #ffa94d; }
@@ -342,7 +343,12 @@ body.light .sidebar {
 .color-option.purple { background: #cc5de8; }
 .color-option.pink { background: #f06595; }
 
-/* Color picker popup */
+/* ===== DYNAMIC NOTE COLORS ===== */
+.note-color {
+    background-color: var(--note-color) !important;
+}
+
+/* ===== COLOR PICKER POPUP ===== */
 .color-popup {
     position: absolute;
     display: flex;
@@ -365,7 +371,7 @@ body.light .sidebar {
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
-        grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 30%, 250px), 1fr)); /* 🔥 TABLET UPDATE */
+        grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 30%, 250px), 1fr));
         gap: 12px;
     }
 }
@@ -408,7 +414,7 @@ body.light .sidebar {
     }
 
     .notes-grid {
-        grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 45%, 180px), 1fr)); /* 🔥 MOBILE UPDATE */
+        grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 45%, 180px), 1fr));
         gap: 10px;
     }
 
