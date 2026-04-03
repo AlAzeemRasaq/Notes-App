@@ -154,10 +154,11 @@ button:hover {
 /* ===== NOTES GRID ===== */
 .notes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 22%, 300px), 1fr)); /* 🔥 UPDATED */
     gap: 15px;
 }
 
+/* ===== NOTE CARD ===== */
 .note {
     background: #2a2a40;
     padding: 15px;
@@ -362,6 +363,13 @@ body.light .sidebar {
 }
 
 /* ===== MOBILE / RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .notes-grid {
+        grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 30%, 250px), 1fr)); /* 🔥 TABLET UPDATE */
+        gap: 12px;
+    }
+}
+
 @media (max-width: 768px) {
     body {
         flex-direction: column;
@@ -400,7 +408,7 @@ body.light .sidebar {
     }
 
     .notes-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 45%, 180px), 1fr)); /* 🔥 MOBILE UPDATE */
         gap: 10px;
     }
 
