@@ -258,7 +258,6 @@ function renderNotes(notes) {
             archiveBtn.textContent = isArchivePage ? "↩️" : "📦";
             archiveBtn.onclick = () => toggleArchiveAction(note._id);
 
-            // 🎨 Color picker button
             const colorBtn = document.createElement("button");
             colorBtn.textContent = "🎨";
             colorBtn.onclick = () => {
@@ -524,9 +523,7 @@ document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     await Promise.all(ids.map(id => toggleArchive(id)));
 
     allNotes.forEach(n => {
-        if (selectedNotes.has(n._id)) {
-            n.archived = !n.archived;
-        }
+        if (selectedNotes.has(n._id)) n.archived = !n.archived;
     });
 
     selectedNotes.clear();
