@@ -188,7 +188,8 @@ function showColorPopup(noteId, btn) {
         const colorBtn = document.createElement("div");
         colorBtn.className = "color-btn";
         colorBtn.style.backgroundColor = c;
-        colorBtn.addEventListener("click", () => {
+        colorBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
             setNoteColor(noteId, c);
             popup.remove();
         });
@@ -199,8 +200,32 @@ function showColorPopup(noteId, btn) {
 
     // Position popup near button
     const rect = btn.getBoundingClientRect();
-    popup.style.top = `${rect.bottom + window.scrollY + 5}px`;
-    popup.style.left = `${rect.left + window.scrollX}px`;
+    let top = rect.bottom + window.scrollY + 5;
+    let left = rect.left + window.scrollX;
+
+    // Ensure it doesn't overflow viewport
+    const popupRect = popup.getBoundingClientRect();
+    if (left + popupRect.width > window.innerWidth) {
+        left = window.innerWidth - popupRect.width - 10;
+    }
+    if (top + popupRect.height > window.innerHeight + window.scrollY) {
+        top = rect.top + window.scrollY - popupRect.height - 5;
+    }
+
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+
+    // Close popup if clicking/tapping outside
+    const removePopup = (e) => {
+        if (!popup.contains(e.target) && e.target !== btn) {
+            popup.remove();
+            document.removeEventListener("click", removePopup);
+            document.removeEventListener("touchstart", removePopup);
+        }
+    };
+
+    document.addEventListener("click", removePopup);
+    document.addEventListener("touchstart", removePopup);
 }
 
 // ===== RENDER NOTES =====
