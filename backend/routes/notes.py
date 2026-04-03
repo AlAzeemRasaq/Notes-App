@@ -60,6 +60,11 @@ def create_note():
     if not isinstance(tags, list):
         tags = []
 
+    # 🆕 Note color support
+    color = (data.get("color") or "#ffffff").strip()
+    if not color.startswith("#") or len(color) not in [4,7]:
+        color = "#ffffff"
+
     # Determine next position
     last_note = mongo.db.notes.find_one({"user_id": user_id}, sort=[("position", -1)])
     next_position = (last_note.get("position", -1) + 1) if last_note else 0
@@ -70,6 +75,7 @@ def create_note():
         "title": title,
         "content": content,
         "tags": tags,
+        "color": color,  # 🆕
         "pinned": False,
         "archived": False,
         "trashed": False,
@@ -85,6 +91,7 @@ def create_note():
         "title": title,
         "content": content,
         "tags": tags,
+        "color": color,  # 🆕 include color in response
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }), 201
@@ -163,10 +170,20 @@ def update_note(id):
 
     title = bleach.clean((data.get("title") or "").strip(), strip=True)
     content = sanitize_html((data.get("content") or "").strip())
+    tags = data.get("tags")
+    if not isinstance(tags, list):
+        tags = []
+
+    # 🆕 Handle color update
+    color = (data.get("color") or "#ffffff").strip()
+    if not color.startswith("#") or len(color) not in [4,7]:
+        color = "#ffffff"
 
     updated_fields = {
         "title": title,
         "content": content,
+        "tags": tags,
+        "color": color,  # 🆕
         "updated_at": datetime.utcnow()
     }
 
