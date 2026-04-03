@@ -79,6 +79,13 @@ async function reorderNotes(ordered_ids) {
 }
 
 // =========================
+// Note Color API
+// =========================
+async function updateNoteColor(id, color) {
+    return await apiRequest(`/notes/color/${id}`, "PUT", { color });
+}
+
+// =========================
 // Trash & Restore
 // =========================
 async function getTrashNotes() {
@@ -86,11 +93,7 @@ async function getTrashNotes() {
 }
 
 async function restoreNote(id) {
-    const res = await fetch(`/notes/${id}/restore`, {
-        method: "PUT",
-        headers: getAuthHeaders()
-    });
-    return res.json();
+    return await apiRequest(`/notes/${id}/restore`, "PUT");
 }
 
 async function deleteNotePermanently(id) {
@@ -106,4 +109,14 @@ async function bulkDelete(note_ids) {
 
 async function bulkArchive(note_ids) {
     return await apiRequest("/notes/bulk-archive", "POST", { note_ids });
+}
+
+// =========================
+// Helper: Auth Headers (used in some legacy calls)
+// =========================
+function getAuthHeaders() {
+    const token = localStorage.getItem("token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
 }
