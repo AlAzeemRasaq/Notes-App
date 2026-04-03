@@ -16,6 +16,9 @@ let currentTag = null;
 let selectedNotes = new Set();
 let selectMode = false; // toggles checkbox mode
 
+// ===== EDIT HISTORY STACKS =====
+const editHistory = {}; // { noteId: { undo: [], redo: [] } }
+
 // ===== UI STATES =====
 function showLoading() {
     const container = document.getElementById("notesContainer");
@@ -324,6 +327,17 @@ function renderNotes(notes) {
             };
 
             actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn);
+
+            // Add Undo / Redo buttons
+            const undoBtn = document.createElement("button");
+            undoBtn.textContent = "↩️";
+            undoBtn.onclick = () => undoEdit(note._id);
+
+            const redoBtn = document.createElement("button");
+            redoBtn.textContent = "↪️";
+            redoBtn.onclick = () => redoEdit(note._id);
+
+            actionsEl.append(undoBtn, redoBtn);
         }
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
@@ -499,6 +513,9 @@ async function editNote(id) {
     titleEl.value = note.title || "";
     contentEl.innerHTML = note.content || "";
 
+    // Initialize undo/redo stack for this note if not exists
+    if (!editHistory[id]) editHistory[id] = { undo: [], redo: [] };
+
     document.getElementById("addNoteBtn").onclick = async () => {
         const updatedTitle = (titleEl.value || "").trim();
         const updatedContent = (contentEl.innerHTML || "").trim();
@@ -509,6 +526,11 @@ async function editNote(id) {
         }
 
         try {
+            // PUSH current state to undo before updating
+            editHistory[id].undo.push({ title: note.title, content: note.content });
+            // CLEAR redo stack on new edit
+            editHistory[id].redo = [];
+
             const updatedNote = await updateNote(id, updatedTitle, updatedContent, note.tags || []);
             Object.assign(note, {
                 title: updatedTitle,
@@ -527,6 +549,32 @@ async function editNote(id) {
             alert("Failed to update note. See console for details.");
         }
     };
+}
+
+// ===== UNDO EDIT =====
+async function undoEdit(noteId) {
+    const note = allNotes.find(n => n._id === noteId);
+    if (!note || !editHistory[noteId] || editHistory[noteId].undo.length === 0) return;
+
+    const lastState = editHistory[noteId].undo.pop();
+    editHistory[noteId].redo.push({ title: note.title, content: note.content });
+
+    Object.assign(note, lastState, { updated_at: new Date().toISOString() });
+    await updateNote(noteId, note.title, note.content, note.tags || []);
+    applyFilters();
+}
+
+// ===== REDO EDIT =====
+async function redoEdit(noteId) {
+    const note = allNotes.find(n => n._id === noteId);
+    if (!note || !editHistory[noteId] || editHistory[noteId].redo.length === 0) return;
+
+    const nextState = editHistory[noteId].redo.pop();
+    editHistory[noteId].undo.push({ title: note.title, content: note.content });
+
+    Object.assign(note, nextState, { updated_at: new Date().toISOString() });
+    await updateNote(noteId, note.title, note.content, note.tags || []);
+    applyFilters();
 }
 
 // ===== TRASH ACTIONS =====
