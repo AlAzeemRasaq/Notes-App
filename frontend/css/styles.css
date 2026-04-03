@@ -162,7 +162,7 @@ button:hover {
     background: #2a2a40;
     padding: 15px;
     border-radius: 12px;
-    position: relative; /* for checkbox */
+    position: relative;
     transition: all 0.2s ease;
 }
 
@@ -205,7 +205,7 @@ body.light .sidebar {
 
 /* ===== NOTE CHECKBOX ===== */
 .note-checkbox {
-    display: none; /* hidden by default */
+    display: none;
     position: absolute;
     top: 10px;
     left: 10px;
@@ -218,27 +218,25 @@ body.light .sidebar {
 /* ===== NOTE CONTENT PREVIEW (LIMIT TO 10 LINES) ===== */
 .note-content {
     white-space: pre-line;
-
     display: -webkit-box;
-    -webkit-line-clamp: 10;         /* 🔥 limit to 10 lines */
+    -webkit-line-clamp: 10;
     -webkit-box-orient: vertical;
-
     overflow: hidden;
 }
 
 /* ===== LAST EDITED TIMESTAMP ===== */
 .note-updated {
-    display: block;          /* ensure it’s on its own line */
-    font-size: 0.75rem;      /* small text */
-    color: #666;             /* muted grey for subtlety */
-    margin-top: 4px;         /* small gap below content */
-    text-align: right;       /* align to the right of the note */
-    font-style: italic;      /* optional, looks nice */
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 4px;
+    text-align: right;
+    font-style: italic;
 }
 
 /* ===== UI STATES (LOADING / EMPTY) ===== */
 .state-message {
-    grid-column: 1 / -1; /* span full width of grid */
+    grid-column: 1 / -1;
     text-align: center;
     padding: 40px 20px;
     font-size: 1.2rem;
@@ -271,10 +269,6 @@ body.light .sidebar {
     font-weight: bold;
 }
 
-.hidden {
-    display: none;
-}
-
 /* ===== DELETE ANIMATION ===== */
 .note.deleting {
     opacity: 0;
@@ -292,50 +286,41 @@ body.light .sidebar {
 
 /* ===== COLOR DOTS BASE ===== */
 .color-option {
-    position: relative; /* 🔥 required for tooltip */
-
+    position: relative;
     width: 22px;
     height: 22px;
     border-radius: 50%;
-
     cursor: pointer;
     border: 2px solid transparent;
-
     transition: transform 0.15s ease,
                 box-shadow 0.15s ease,
                 border 0.15s ease;
 }
 
-/* 🎯 Hover effect */
 .color-option:hover {
     transform: scale(1.2);
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
 }
 
-/* ✅ Selected state (FIXED name) */
 .color-option.selected {
     border: 2px solid #000;
     transform: scale(1.25);
 }
 
-/* ===== TOOLTIP ===== */
 .color-option::after {
     content: attr(data-color);
     position: absolute;
     bottom: 130%;
     left: 50%;
     transform: translateX(-50%) translateY(5px);
-
     background: #000;
     color: #fff;
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
-
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -344,12 +329,7 @@ body.light .sidebar {
     transform: translateX(-50%) translateY(0);
 }
 
-/* ===== ACTUAL COLORS ===== */
-.color-option.default {
-    background: #ffffff;
-    border: 2px solid #ccc;
-}
-
+.color-option.default { background: #ffffff; border: 2px solid #ccc; }
 .color-option.red { background: #ff6b6b; }
 .color-option.orange { background: #ffa94d; }
 .color-option.yellow { background: #ffd43b; }
@@ -379,4 +359,61 @@ body.light .sidebar {
     border-radius: 50%;
     cursor: pointer;
     border: 1px solid #ccc;
+}
+
+/* ===== MOBILE / RESPONSIVE ===== */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px;
+    }
+
+    .sidebar nav {
+        display: flex;
+        gap: 10px;
+    }
+
+    .sidebar nav a {
+        padding: 8px 12px;
+    }
+
+    .main-container {
+        padding: 10px;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .topbar input {
+        width: 100%;
+    }
+
+    .notes-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+    }
+
+    .toolbar {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .create-note {
+        padding: 15px;
+    }
+
+    .rich-editor {
+        min-height: 200px;
+    }
 }
