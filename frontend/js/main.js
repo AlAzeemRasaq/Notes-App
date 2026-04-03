@@ -157,6 +157,19 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
     }, 300);
 });
 
+// ===== NOTE COLOR PICKER =====
+function setNoteColor(noteId, color) {
+    const note = allNotes.find(n => n._id === noteId);
+    if (!note) return;
+
+    note.color = color;
+    const noteDiv = document.querySelector(`[data-id="${noteId}"]`);
+    if (noteDiv) noteDiv.style.backgroundColor = color;
+
+    // Optional: save to backend
+    updateNoteColor(noteId, color).catch(console.error);
+}
+
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
     const container = document.getElementById("notesContainer");
@@ -170,6 +183,9 @@ function renderNotes(notes) {
         div.className = "note";
         div.draggable = !isTrashPage;
         div.dataset.id = note._id;
+
+        // Set saved color
+        if (note.color) div.style.backgroundColor = note.color;
 
         // ===== 🔥 BULK SELECTION CHECKBOX =====
         const checkbox = document.createElement("input");
@@ -242,7 +258,15 @@ function renderNotes(notes) {
             archiveBtn.textContent = isArchivePage ? "↩️" : "📦";
             archiveBtn.onclick = () => toggleArchiveAction(note._id);
 
-            actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn);
+            // 🎨 Color picker button
+            const colorBtn = document.createElement("button");
+            colorBtn.textContent = "🎨";
+            colorBtn.onclick = () => {
+                const color = prompt("Enter a hex color code (#fff, #ff0000, etc):", note.color || "#fff");
+                if (color) setNoteColor(note._id, color);
+            };
+
+            actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn);
         }
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
@@ -317,8 +341,7 @@ async function createNoteAction() {
 
     try {
         const newNote = await createNote(title, content, []);
-        // Add new note locally to allNotes so UI updates instantly
-        allNotes.unshift({              // New notes appear at the top instantly
+        allNotes.unshift({
             _id: newNote._id,
             title: newNote.title,
             content: newNote.content,
@@ -331,11 +354,9 @@ async function createNoteAction() {
             updated_at: newNote.updated_at
         });
 
-        // Reset input fields
         titleEl.value = "";
         contentEl.innerHTML = "";
 
-        // Refresh notes UI
         applyFilters();
     } catch (err) {
         console.error("Failed to create note:", err);
@@ -348,21 +369,15 @@ async function deleteNoteWithUndo(noteId) {
     const noteElement = document.querySelector(`[data-id="${noteId}"]`);
     if (!noteElement) return;
 
-    // 🧈 Animate out
     noteElement.classList.add("deleting");
 
-    // ⏳ Wait for animation
     setTimeout(async () => {
         const note = allNotes.find(n => n._id === noteId);
-
-        // Save for undo
         lastDeletedNote = note;
 
-        // Remove from UI instantly
         allNotes = allNotes.filter(n => n._id !== noteId);
         applyFilters();
 
-        // Call backend (soft delete)
         await deleteNote(noteId);
 
         showUndoToast();
@@ -379,17 +394,15 @@ function showUndoToast() {
     undoTimeout = setTimeout(() => {
         toast.classList.add("hidden");
         lastDeletedNote = null;
-    }, 5000); // 5 sec window
+    }, 5000);
 }
 
 // ===== UNDO DELETE =====
 async function undoDelete() {
     if (!lastDeletedNote) return;
 
-    // Restore in backend
     await restoreNote(lastDeletedNote._id);
 
-    // Restore in UI
     allNotes.unshift(lastDeletedNote);
     applyFilters();
 
@@ -440,18 +453,15 @@ async function editNote(id) {
 
         try {
             const updatedNote = await updateNote(id, updatedTitle, updatedContent, note.tags || []);
-            // Update local note
             Object.assign(note, {
                 title: updatedTitle,
                 content: updatedContent,
                 updated_at: new Date().toISOString()
             });
 
-            // Reset input fields
             titleEl.value = "";
             contentEl.innerHTML = "";
 
-            // Restore button to create mode
             document.getElementById("addNoteBtn").onclick = createNoteAction;
 
             applyFilters();
@@ -465,10 +475,7 @@ async function editNote(id) {
 // ===== TRASH ACTIONS =====
 async function restoreNoteAction(id) {
     await restoreNote(id);
-
-    // remove from trash view
     allNotes = allNotes.filter(n => n._id !== id);
-
     applyFilters();
 }
 
@@ -476,9 +483,7 @@ async function permanentDeleteNoteAction(id) {
     if (!confirm("Permanently delete this note?")) return;
 
     await deleteNotePermanently(id);
-
     allNotes = allNotes.filter(n => n._id !== id);
-
     applyFilters();
 }
 
@@ -502,10 +507,8 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
 
     const ids = Array.from(selectedNotes);
-
     await Promise.all(ids.map(id => deleteNote(id)));
 
-    // 🧠 remove locally
     allNotes = allNotes.filter(n => !selectedNotes.has(n._id));
 
     selectedNotes.clear();
@@ -518,10 +521,8 @@ document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
 
     const ids = Array.from(selectedNotes);
-
     await Promise.all(ids.map(id => toggleArchive(id)));
 
-    // 🧠 update locally
     allNotes.forEach(n => {
         if (selectedNotes.has(n._id)) {
             n.archived = !n.archived;
