@@ -67,6 +67,17 @@ function formatDate(dateString) {
     return date.toLocaleString(); // simple + clean
 }
 
+// ===== PREVIEW TEXT (STRIP HTML + LIMIT) =====
+function getPreviewText(html) {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+
+    // Convert <br> to line breaks
+    temp.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+
+    return temp.innerText;
+}
+
 // ===== 🔥 IMPROVED APPLY FILTERS (SEARCH + TAG + RANKING) =====
 function applyFilters() {
     const terms = currentSearch.split(/\s+/).filter(Boolean);
@@ -185,7 +196,7 @@ function renderNotes(notes) {
 
         const contentEl = document.createElement("div");
         contentEl.className = "note-content";
-        contentEl.innerHTML = note.content || "";
+        contentEl.textContent = getPreviewText(note.content || "");
 
         const tagsEl = document.createElement("div");
         tagsEl.className = "tags";
