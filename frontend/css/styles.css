@@ -360,3 +360,23 @@ body.light .sidebar {
 .color-option.violet { background: #845ef7; }
 .color-option.purple { background: #cc5de8; }
 .color-option.pink { background: #f06595; }
+
+/* Color picker popup */
+.color-popup {
+    position: absolute;
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+    background: #2a2a40;
+    border: 1px solid #555;
+    border-radius: 6px;
+    z-index: 9999;
+}
+
+.color-popup .color-btn {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 1px solid #ccc;
+}
