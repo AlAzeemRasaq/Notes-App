@@ -158,6 +158,11 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
 });
 
 // ===== NOTE COLOR PICKER =====
+const presetColors = [
+    "#ffffff","#ffadad","#ffd6a5","#fdffb6","#caffbf",
+    "#9bf6ff","#a0c4ff","#bdb2ff","#ffc6ff","#fffffc"
+];
+
 function setNoteColor(noteId, color) {
     const note = allNotes.find(n => n._id === noteId);
     if (!note) return;
@@ -166,8 +171,36 @@ function setNoteColor(noteId, color) {
     const noteDiv = document.querySelector(`[data-id="${noteId}"]`);
     if (noteDiv) noteDiv.style.backgroundColor = color;
 
-    // Optional: save to backend
     updateNoteColor(noteId, color).catch(console.error);
+}
+
+// 🔥 NEW: Inline color picker popup
+function showColorPopup(noteId, btn) {
+    // Remove any existing popup
+    const existing = document.getElementById("colorPopup");
+    if (existing) existing.remove();
+
+    const popup = document.createElement("div");
+    popup.id = "colorPopup";
+    popup.className = "color-popup";
+
+    presetColors.forEach(c => {
+        const colorBtn = document.createElement("div");
+        colorBtn.className = "color-btn";
+        colorBtn.style.backgroundColor = c;
+        colorBtn.addEventListener("click", () => {
+            setNoteColor(noteId, c);
+            popup.remove();
+        });
+        popup.appendChild(colorBtn);
+    });
+
+    document.body.appendChild(popup);
+
+    // Position popup near button
+    const rect = btn.getBoundingClientRect();
+    popup.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    popup.style.left = `${rect.left + window.scrollX}px`;
 }
 
 // ===== RENDER NOTES =====
@@ -260,9 +293,9 @@ function renderNotes(notes) {
 
             const colorBtn = document.createElement("button");
             colorBtn.textContent = "🎨";
-            colorBtn.onclick = () => {
-                const color = prompt("Enter a hex color code (#fff, #ff0000, etc):", note.color || "#fff");
-                if (color) setNoteColor(note._id, color);
+            colorBtn.onclick = (e) => {
+                e.stopPropagation(); // prevent note click events
+                showColorPopup(note._id, colorBtn);
             };
 
             actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn);
