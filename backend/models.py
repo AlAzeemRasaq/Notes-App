@@ -27,7 +27,8 @@ class Note(db.Model):
 
     position = db.Column(db.Integer, default=0)
 
-    # ✅ ADD / UPDATE THESE
+    color = db.Column(db.String(20), default="#ffffff")  # 🆕 note color support
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
