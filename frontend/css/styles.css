@@ -215,6 +215,17 @@ body.light .sidebar {
     display: block;
 }
 
+/* ===== NOTE CONTENT PREVIEW (LIMIT TO 10 LINES) ===== */
+.note-content {
+    white-space: pre-line;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 10;         /* 🔥 limit to 10 lines */
+    -webkit-box-orient: vertical;
+
+    overflow: hidden;
+}
+
 /* ===== LAST EDITED TIMESTAMP ===== */
 .note-updated {
     display: block;          /* ensure it’s on its own line */
