@@ -7,6 +7,28 @@
     
     <!-- 🆕 Inline editing uses .editing class (styled in CSS) -->
 </head>
+
+<!-- 🆕 NOTE EXPANSION MODAL -->
+<div id="noteModal" class="modal hidden">
+
+    <!-- Overlay (click to close) -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+
+    <!-- Modal Content -->
+    <div class="modal-content">
+
+        <!-- Close Button -->
+        <button id="closeModalBtn" class="close-btn">&times;</button>
+
+        <!-- Editable Title -->
+        <input id="modalTitle" class="modal-title" placeholder="Note title">
+
+        <!-- Editable Content -->
+        <div id="modalContent" class="modal-editor" contenteditable="true"></div>
+
+    </div>
+</div>
+    
 <body>
 
     <!-- Sidebar -->
