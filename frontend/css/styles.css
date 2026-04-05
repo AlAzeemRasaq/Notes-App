@@ -164,7 +164,9 @@ button:hover {
     padding: 15px;
     border-radius: 12px;
     position: relative;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.25s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .note.pinned {
@@ -178,6 +180,59 @@ button:hover {
 
 .note.drag-over {
     border: 2px dashed #7c5cff;
+}
+
+/* ===== NOTE OPEN / COLLAPSE ===== */
+.note-inner {
+    max-height: 300px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    opacity: 1;
+}
+
+.note.open .note-inner {
+    max-height: 2000px;
+    opacity: 1;
+}
+
+/* ===== HOVER ANIMATION ===== */
+.note:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== EDITING STATE ===== */
+.note.editing {
+    cursor: text;
+    outline: none;
+    box-shadow: 0 0 0 2px #4f46e5, 0 8px 20px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
+    transition: all 0.15s ease;
+}
+
+.note.editing .note-title {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.note.editing .note-content {
+    min-height: 60px;
+}
+
+.note-title,
+.note-content {
+    cursor: inherit;
+}
+
+.note.editing *:focus {
+    outline: none;
+}
+
+.note-content:empty::before {
+    content: "Start typing...";
+    color: #999;
+    font-style: italic;
 }
 
 /* ===== TAGS ===== */
@@ -216,7 +271,7 @@ body.light .sidebar {
     display: block;
 }
 
-/* ===== NOTE CONTENT PREVIEW (LIMIT TO 10 LINES) ===== */
+/* ===== NOTE CONTENT PREVIEW ===== */
 .note-content {
     white-space: pre-line;
     display: -webkit-box;
@@ -235,7 +290,7 @@ body.light .sidebar {
     font-style: italic;
 }
 
-/* ===== UI STATES (LOADING / EMPTY) ===== */
+/* ===== UI STATES ===== */
 .state-message {
     grid-column: 1 / -1;
     text-align: center;
@@ -258,7 +313,7 @@ body.light .sidebar {
     display: flex;
     gap: 12px;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 1000;
 }
 
@@ -272,12 +327,25 @@ body.light .sidebar {
 
 /* ===== DELETE ANIMATION ===== */
 .note.deleting {
-    opacity: 0;
-    transform: scale(0.95);
-    transition: all 0.2s ease;
+    animation: shrinkFade 0.4s forwards;
 }
 
-/* ===== COLOR PICKER CONTAINER ===== */
+@keyframes shrinkFade {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.5);
+        opacity: 0;
+        height: 0;
+        margin: 0;
+        padding: 0;
+    }
+}
+
+/* ===== COLOR PICKER ===== */
 .color-picker {
     display: flex;
     flex-wrap: wrap;
@@ -285,7 +353,6 @@ body.light .sidebar {
     margin-top: 8px;
 }
 
-/* ===== COLOR DOTS BASE ===== */
 .color-option {
     position: relative;
     width: 22px;
@@ -293,9 +360,7 @@ body.light .sidebar {
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;
-    transition: transform 0.15s ease,
-                box-shadow 0.15s ease,
-                border 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border 0.15s ease;
 }
 
 .color-option:hover {
@@ -330,25 +395,7 @@ body.light .sidebar {
     transform: translateX(-50%) translateY(0);
 }
 
-/* ===== PRESET COLORS ===== */
-.color-option.default { background: #ffffff; border: 2px solid #ccc; }
-.color-option.red { background: #ff6b6b; }
-.color-option.orange { background: #ffa94d; }
-.color-option.yellow { background: #ffd43b; }
-.color-option.green { background: #69db7c; }
-.color-option.cyan { background: #3bc9db; }
-.color-option.blue { background: #4dabf7; }
-.color-option.indigo { background: #5c7cfa; }
-.color-option.violet { background: #845ef7; }
-.color-option.purple { background: #cc5de8; }
-.color-option.pink { background: #f06595; }
-
-/* ===== DYNAMIC NOTE COLORS ===== */
-.note-color {
-    background-color: var(--note-color) !important;
-}
-
-/* ===== COLOR PICKER POPUP ===== */
+/* ===== COLOR POPUP ===== */
 .color-popup {
     position: absolute;
     display: flex;
@@ -358,6 +405,14 @@ body.light .sidebar {
     border: 1px solid #555;
     border-radius: 6px;
     z-index: 9999;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.color-popup.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .color-popup .color-btn {
@@ -368,68 +423,7 @@ body.light .sidebar {
     border: 1px solid #ccc;
 }
 
-/* 🧠 Base note styling (make sure this exists) */
-.note {
-    padding: 12px;
-    border-radius: 12px;
-    background: var(--note-bg, #fff);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-/* ✨ Hover = subtle feedback */
-.note:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
-}
-
-/* 🆕 EDITING STATE */
-.note.editing {
-    cursor: text;
-    outline: none;
-    
-    /* 🔥 Highlight effect */
-    box-shadow: 0 0 0 2px #4f46e5, 0 8px 20px rgba(0,0,0,0.15);
-    
-    /* Slight zoom = feels interactive */
-    transform: scale(1.02);
-    
-    /* Smooth transition */
-    transition: all 0.15s ease;
-}
-
-/* 📝 Editable title */
-.note.editing .note-title {
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
-}
-
-/* 📝 Editable content */
-.note.editing .note-content {
-    min-height: 60px;
-}
-
-/* ✏️ Show text cursor only when editing */
-.note-title,
-.note-content {
-    cursor: inherit;
-}
-
-/* 🔒 Prevent weird outlines from browser */
-.note.editing *:focus {
-    outline: none;
-}
-
-/* 🧩 Optional: subtle placeholder style */
-.note-content:empty::before {
-    content: "Start typing...";
-    color: #999;
-    font-style: italic;
-}
-
-/* 🆕 MODAL BASE */
+/* ===== MODAL ===== */
 .modal {
     position: fixed;
     inset: 0;
@@ -439,48 +433,37 @@ body.light .sidebar {
     z-index: 999;
 }
 
-/* Hidden state */
 .modal.hidden {
     display: none;
 }
 
-/* 🌑 Overlay */
 .modal-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
 }
 
-/* 📦 Modal box */
 .modal-content {
     position: relative;
     width: 90%;
     max-width: 600px;
     max-height: 80vh;
     overflow-y: auto;
-
     background: #fff;
     border-radius: 16px;
     padding: 20px;
-
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-
-    /* ✨ Animation */
-    transform: scale(0.95);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
     opacity: 0;
-    animation: modalFadeIn 0.2s ease forwards;
+    transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
-/* ✨ Animation keyframes */
-@keyframes modalFadeIn {
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+.modal.active .modal-content {
+    transform: translateY(0);
+    opacity: 1;
 }
 
-/* ❌ Close button */
 .close-btn {
     position: absolute;
     top: 10px;
@@ -491,7 +474,6 @@ body.light .sidebar {
     cursor: pointer;
 }
 
-/* 📝 Title */
 .modal-title {
     width: 100%;
     font-size: 20px;
@@ -501,15 +483,13 @@ body.light .sidebar {
     margin-bottom: 10px;
 }
 
-/* 🧠 Editor */
 .modal-editor {
     min-height: 200px;
     outline: none;
 }
 
-/* 🖱️ Hover feedback */
 .modal-content:hover {
-    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
 }
 
 /* ===== MOBILE / RESPONSIVE ===== */
