@@ -54,7 +54,7 @@ modalCloseBtn?.addEventListener("click", closeModal);
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId; // 🆕 capture this request's ID
 
-    showLoading();
+    showLoading(); // 🆕 show loading immediately
 
     let notes;
 
@@ -78,6 +78,19 @@ async function loadNotes(search = "") {
     }
 
     allNotes = notes;
+
+    // 🆕 Show empty state if no notes after filtering
+    if (!notes.length) {
+        const message = window.isTrashPage
+            ? "Trash is empty"
+            : isArchivePage
+                ? "No archived notes"
+                : search
+                    ? "No notes match your search"
+                    : "No notes yet";
+        showEmpty(message);
+        return; // Skip applyFilters if empty
+    }
 
     applyFilters(); // Always go through filter system
 }
