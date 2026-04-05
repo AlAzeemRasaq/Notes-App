@@ -368,6 +368,67 @@ body.light .sidebar {
     border: 1px solid #ccc;
 }
 
+/* 🧠 Base note styling (make sure this exists) */
+.note {
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--note-bg, #fff);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+/* ✨ Hover = subtle feedback */
+.note:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+}
+
+/* 🆕 EDITING STATE */
+.note.editing {
+    cursor: text;
+    outline: none;
+    
+    /* 🔥 Highlight effect */
+    box-shadow: 0 0 0 2px #4f46e5, 0 8px 20px rgba(0,0,0,0.15);
+    
+    /* Slight zoom = feels interactive */
+    transform: scale(1.02);
+    
+    /* Smooth transition */
+    transition: all 0.15s ease;
+}
+
+/* 📝 Editable title */
+.note.editing .note-title {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+/* 📝 Editable content */
+.note.editing .note-content {
+    min-height: 60px;
+}
+
+/* ✏️ Show text cursor only when editing */
+.note-title,
+.note-content {
+    cursor: inherit;
+}
+
+/* 🔒 Prevent weird outlines from browser */
+.note.editing *:focus {
+    outline: none;
+}
+
+/* 🧩 Optional: subtle placeholder style */
+.note-content:empty::before {
+    content: "Start typing...";
+    color: #999;
+    font-style: italic;
+}
+
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
