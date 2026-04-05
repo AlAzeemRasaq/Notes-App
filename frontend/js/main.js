@@ -30,6 +30,26 @@ function showEmpty(message = "No notes yet") {
     container.innerHTML = `<div class="state-message">${message}</div>`;
 }
 
+// ===== MODAL HANDLING =====
+const modal = document.getElementById("modal");
+const modalOverlay = modal?.querySelector(".modal-overlay");
+const modalCloseBtn = modal?.querySelector(".close-btn");
+
+function openModal() {
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    setTimeout(() => modal.classList.add("active"), 10);
+}
+
+function closeModal() {
+    if (!modal) return;
+    modal.classList.remove("active");
+    setTimeout(() => modal.classList.add("hidden"), 250);
+}
+
+modalOverlay?.addEventListener("click", closeModal);
+modalCloseBtn?.addEventListener("click", closeModal);
+
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId; // 🆕 capture this request's ID
@@ -178,10 +198,10 @@ function setNoteColor(noteId, color) {
 }
 
 // 🔥 NEW: Inline color picker popup
+let activeColorPopup = null;
+
 function showColorPopup(noteId, btn) {
-    // Remove any existing popup
-    const existing = document.getElementById("colorPopup");
-    if (existing) existing.remove();
+    if (activeColorPopup) activeColorPopup.remove();
 
     const popup = document.createElement("div");
     popup.id = "colorPopup";
@@ -206,7 +226,6 @@ function showColorPopup(noteId, btn) {
     let top = rect.bottom + window.scrollY + 5;
     let left = rect.left + window.scrollX;
 
-    // Ensure it doesn't overflow viewport
     const popupRect = popup.getBoundingClientRect();
     if (left + popupRect.width > window.innerWidth) {
         left = window.innerWidth - popupRect.width - 10;
@@ -218,10 +237,12 @@ function showColorPopup(noteId, btn) {
     popup.style.top = `${top}px`;
     popup.style.left = `${left}px`;
 
-    // Close popup if clicking/tapping outside
+    activeColorPopup = popup;
+
     const removePopup = (e) => {
         if (!popup.contains(e.target) && e.target !== btn) {
             popup.remove();
+            activeColorPopup = null;
             document.removeEventListener("click", removePopup);
             document.removeEventListener("touchstart", removePopup);
         }
@@ -233,7 +254,8 @@ function showColorPopup(noteId, btn) {
 
 // ===== MODAL UPDATES =====
 function showModal(title, message, onConfirm, onCancel) {
-    const modal = document.getElementById("modal");
+    if (!modal) return;
+
     const modalTitle = modal.querySelector(".modal-title");
     const modalMessage = modal.querySelector(".modal-message");
     const confirmBtn = modal.querySelector(".modal-confirm");
@@ -255,17 +277,19 @@ function showModal(title, message, onConfirm, onCancel) {
     modal.classList.add("active");
 }
 
-// Usage example for permanent delete:
-async function permanentDeleteNoteAction(id) {
-    showModal(
-        "Delete Note Permanently",
-        "Are you sure you want to permanently delete this note?",
-        async () => {
-            await deleteNotePermanently(id);
-            allNotes = allNotes.filter(n => n._id !== id);
-            applyFilters();
-        }
-    );
+// ===== DELETE NOTE ANIMATION =====
+function deleteNoteAnimated(noteDiv, noteId) {
+    noteDiv.classList.add("deleting");
+    setTimeout(async () => {
+        const note = allNotes.find(n => n._id === noteId);
+        lastDeletedNote = note;
+
+        allNotes = allNotes.filter(n => n._id !== noteId);
+        applyFilters();
+
+        await deleteNote(noteId);
+        showUndoToast();
+    }, 400); // match CSS animation
 }
 
 // ===== RENDER NOTES =====
@@ -285,7 +309,7 @@ function renderNotes(notes) {
         // Set saved color
         if (note.color) div.style.backgroundColor = note.color;
 
-        // ===== 🔥 BULK SELECTION CHECKBOX =====
+        // ===== BULK SELECTION CHECKBOX =====
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.className = "note-checkbox";
@@ -346,7 +370,7 @@ function renderNotes(notes) {
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Delete";
-            deleteBtn.onclick = () => deleteNoteWithUndo(note._id);
+            deleteBtn.onclick = () => deleteNoteAnimated(div, note._id);
 
             const pinBtn = document.createElement("button");
             pinBtn.textContent = "📌";
@@ -359,7 +383,7 @@ function renderNotes(notes) {
             const colorBtn = document.createElement("button");
             colorBtn.textContent = "🎨";
             colorBtn.onclick = (e) => {
-                e.stopPropagation(); // prevent note click events
+                e.stopPropagation();
                 showColorPopup(note._id, colorBtn);
             };
 
@@ -379,6 +403,11 @@ function renderNotes(notes) {
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
+
+        // ===== NOTE CLICK: OPEN/COLLAPSE =====
+        contentContainer.addEventListener("click", () => {
+            div.classList.toggle("open");
+        });
 
         contentContainer.addEventListener("dblclick", () => {
             enableInlineEdit(div, note);
