@@ -429,6 +429,89 @@ body.light .sidebar {
     font-style: italic;
 }
 
+/* 🆕 MODAL BASE */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+/* Hidden state */
+.modal.hidden {
+    display: none;
+}
+
+/* 🌑 Overlay */
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+}
+
+/* 📦 Modal box */
+.modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+
+    /* ✨ Animation */
+    transform: scale(0.95);
+    opacity: 0;
+    animation: modalFadeIn 0.2s ease forwards;
+}
+
+/* ✨ Animation keyframes */
+@keyframes modalFadeIn {
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ❌ Close button */
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: none;
+    background: none;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* 📝 Title */
+.modal-title {
+    width: 100%;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    outline: none;
+    margin-bottom: 10px;
+}
+
+/* 🧠 Editor */
+.modal-editor {
+    min-height: 200px;
+    outline: none;
+}
+
+/* 🖱️ Hover feedback */
+.modal-content:hover {
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+}
+
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
