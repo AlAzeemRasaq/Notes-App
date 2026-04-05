@@ -231,6 +231,43 @@ function showColorPopup(noteId, btn) {
     document.addEventListener("touchstart", removePopup);
 }
 
+// ===== MODAL UPDATES =====
+function showModal(title, message, onConfirm, onCancel) {
+    const modal = document.getElementById("modal");
+    const modalTitle = modal.querySelector(".modal-title");
+    const modalMessage = modal.querySelector(".modal-message");
+    const confirmBtn = modal.querySelector(".modal-confirm");
+    const cancelBtn = modal.querySelector(".modal-cancel");
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
+    confirmBtn.onclick = () => {
+        modal.classList.remove("active");
+        if (onConfirm) onConfirm();
+    };
+
+    cancelBtn.onclick = () => {
+        modal.classList.remove("active");
+        if (onCancel) onCancel();
+    };
+
+    modal.classList.add("active");
+}
+
+// Usage example for permanent delete:
+async function permanentDeleteNoteAction(id) {
+    showModal(
+        "Delete Note Permanently",
+        "Are you sure you want to permanently delete this note?",
+        async () => {
+            await deleteNotePermanently(id);
+            allNotes = allNotes.filter(n => n._id !== id);
+            applyFilters();
+        }
+    );
+}
+
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
     const container = document.getElementById("notesContainer");
