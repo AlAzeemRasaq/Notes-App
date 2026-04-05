@@ -305,7 +305,7 @@ function renderNotes(notes) {
         } else {
             const editBtn = document.createElement("button");
             editBtn.textContent = "Edit";
-            editBtn.onclick = () => editNote(note._id);
+            editBtn.onclick = () => enableInlineEdit(div, note);
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Delete";
@@ -342,6 +342,10 @@ function renderNotes(notes) {
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
+
+        contentContainer.addEventListener("dblclick", () => {
+            enableInlineEdit(div, note);
+        });
 
         // ===== DRAG EVENTS =====
         if (!isTrashPage) {
@@ -549,6 +553,75 @@ async function editNote(id) {
             alert("Failed to update note. See console for details.");
         }
     };
+}
+
+// ===== INLINE EDITING =====
+function enableInlineEdit(noteEl, note) {
+    const titleEl = noteEl.querySelector("h3");
+    const contentEl = noteEl.querySelector(".note-content");
+
+    // Make editable
+    titleEl.contentEditable = true;
+    contentEl.contentEditable = true;
+
+    titleEl.classList.add("editing");
+    contentEl.classList.add("editing");
+
+    titleEl.focus();
+
+    // Save on blur (click away)
+    const saveHandler = () => saveInlineEdit(noteEl, note);
+
+    titleEl.addEventListener("blur", saveHandler, { once: true });
+    contentEl.addEventListener("blur", saveHandler, { once: true });
+}
+
+async function saveInlineEdit(noteEl, note) {
+    const titleEl = noteEl.querySelector("h3");
+    const contentEl = noteEl.querySelector(".note-content");
+
+    const newTitle = titleEl.textContent.trim();
+    const newContent = contentEl.textContent.trim();
+
+    if (!newTitle && !newContent) {
+        alert("Note cannot be empty!");
+        return;
+    }
+
+    // Init history if needed
+    if (!editHistory[note._id]) {
+        editHistory[note._id] = { undo: [], redo: [] };
+    }
+
+    // Push previous state
+    editHistory[note._id].undo.push({
+        title: note.title,
+        content: note.content
+    });
+    editHistory[note._id].redo = [];
+
+    try {
+        await updateNote(note._id, newTitle, newContent, note.tags || []);
+
+        Object.assign(note, {
+            title: newTitle,
+            content: newContent,
+            updated_at: new Date().toISOString()
+        });
+
+        // Turn off editing
+        titleEl.contentEditable = false;
+        contentEl.contentEditable = false;
+
+        titleEl.classList.remove("editing");
+        contentEl.classList.remove("editing");
+
+        applyFilters(); // re-render cleanly
+
+    } catch (err) {
+        console.error("Inline update failed:", err);
+        alert("Failed to update note.");
+    }
 }
 
 // ===== UNDO EDIT =====
