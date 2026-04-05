@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Notes App</title>
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- 🆕 Inline editing uses .editing class (styled in CSS) -->
 </head>
 <body>
 
@@ -46,6 +48,7 @@
             </div>
 
             <!-- Rich Text Editor -->
+            <!-- 🆕 Already supports placeholder → mirrors inline editing behaviour -->
             <div id="noteContent" class="rich-editor" contenteditable="true" placeholder="Take a note..."></div>
 
             <!-- Hidden Image Uploader -->
@@ -67,6 +70,11 @@
             </div>
 
             <button id="addNoteBtn">Add Note</button>
+
+            <!-- 🆕 UX Hint for Inline Editing -->
+            <small class="edit-hint">
+                Tip: Double-click a note to edit ✏️
+            </small>
         </div>
 
         <!-- 🔥 SELECT MODE BUTTON -->
@@ -82,6 +90,7 @@
         </div>
 
         <!-- Notes Grid -->
+        <!-- 🆕 Notes inside here will become inline-editable via JS -->
         <div id="notesContainer" class="notes-grid"></div>
     </div>
 
