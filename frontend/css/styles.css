@@ -494,9 +494,58 @@ body.light .sidebar {
 
 .state-message {
     text-align: center;
-    color: #888;
-    font-size: 1.1rem;
-    padding: 40px 20px;
+    font-size: 1.2rem;
+    color: #555;
+    padding: 2rem;
+    font-style: italic;
+}
+
+#notesContainer .loading {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+/* Toast container (bottom-right corner) */
+#toastContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+/* Individual toast */
+.toast {
+    background: #2a2a40;
+    color: #fff;
+    padding: 10px 16px;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeIn 0.2s forwards;
+}
+
+/* Fade in */
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fade out */
+.toast.fade-out {
+    animation: fadeOut 0.3s forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 }
 
 /* ===== MOBILE / RESPONSIVE ===== */
