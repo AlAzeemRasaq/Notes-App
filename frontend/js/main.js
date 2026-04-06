@@ -10,6 +10,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+// ===== AUTOSAVE STATE =====
+let autosaveTimers = {};
+
 // ===== DELETE UX STATE =====
 let lastDeletedNote = null;
 let undoTimeout = null;
@@ -644,6 +647,10 @@ function enableInlineEdit(noteEl, note) {
 
     titleEl.focus();
 
+    // After creating inputs/textarea inside enableInlineEdit()
+    titleInput?.addEventListener("input", () => triggerAutosave(noteElement));
+    textarea?.addEventListener("input", () => triggerAutosave(noteElement));
+
     const saveHandler = () => saveInlineEdit(noteEl, note);
     titleEl.addEventListener("blur", saveHandler, { once: true });
     contentEl.addEventListener("blur", saveHandler, { once: true });
@@ -749,6 +756,57 @@ function closeEditMode(noteElement) {
         // Call your existing update function
         updateNote(id, updatedData);
     }
+}
+
+// ===== AUTOSAVE ON INPUT =====
+function triggerAutosave(noteElement) {
+    const noteId = noteElement.dataset.id;
+
+    const titleInput = noteElement.querySelector("input");
+    const textarea = noteElement.querySelector("textarea");
+
+    if (!noteId || (!titleInput && !textarea)) return;
+
+    const updatedData = {
+        title: titleInput ? titleInput.value : "",
+        content: textarea ? textarea.value : ""
+    };
+
+    // Show saving indicator
+    showSavingIndicator(noteElement);
+
+    // Debounce per note
+    clearTimeout(autosaveTimers[noteId]);
+    autosaveTimers[noteId] = setTimeout(() => {
+        updateNote(noteId, updatedData);
+    }, 600); // tweak delay if needed
+}
+
+// ===== SAVING INDICATOR =====
+function showSavingIndicator(noteElement) {
+    let indicator = noteElement.querySelector(".saving-indicator");
+
+    if (!indicator) {
+        indicator = document.createElement("span");
+        indicator.className = "saving-indicator";
+        indicator.textContent = "Saving...";
+        indicator.style.fontSize = "12px";
+        indicator.style.opacity = "0.7";
+        indicator.style.marginLeft = "8px";
+
+        // Attach near actions or at bottom
+        const actions = noteElement.querySelector(".note-actions");
+        if (actions) {
+            actions.appendChild(indicator);
+        } else {
+            noteElement.appendChild(indicator);
+        }
+    }
+
+    // Remove after a short delay
+    setTimeout(() => {
+        indicator?.remove();
+    }, 1000);
 }
 
 // ===== TRASH ACTIONS =====
