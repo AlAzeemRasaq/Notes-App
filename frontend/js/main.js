@@ -383,7 +383,19 @@ function renderNotes(notes) {
         } else {
             const editBtn = document.createElement("button");
             editBtn.textContent = "Edit";
-            editBtn.onclick = () => enableInlineEdit(div, note);
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+
+                // Remove editing from other notes
+                document.querySelectorAll(".note.editing").forEach(n => {
+                    n.classList.remove("editing");
+                });
+
+                // Set this note to editing
+                div.classList.add("editing");
+
+                enableInlineEdit(div, note);
+            };
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Delete";
@@ -421,7 +433,18 @@ function renderNotes(notes) {
 
         // ===== CLICK/DOUBLECLICK =====
         contentContainer.addEventListener("click", () => div.classList.toggle("open"));
-        contentContainer.addEventListener("dblclick", () => enableInlineEdit(div, note));
+
+        contentContainer.addEventListener("dblclick", () => {
+            // Remove editing from any other notes
+            document.querySelectorAll(".note.editing").forEach(n => {
+                n.classList.remove("editing");
+            });
+
+            // Set this note as editing
+            div.classList.add("editing");
+
+            enableInlineEdit(div, note);
+        });
 
         if (note.pinned) div.classList.add("pinned");
 
@@ -692,6 +715,40 @@ async function redoEdit(noteId) {
     Object.assign(note, nextState, { updated_at: new Date().toISOString() });
     await updateNote(noteId, note.title, note.content, note.tags || []);
     applyFilters();
+}
+
+// ===== CLICK OUTSIDE TO CLOSE EDIT MODE =====
+document.addEventListener("click", (e) => {
+    const activeNote = document.querySelector(".note.editing");
+    if (!activeNote) return;
+
+    // If the click is INSIDE the note → do nothing
+    if (activeNote.contains(e.target)) return;
+
+    // Otherwise → close edit mode
+    closeEditMode(activeNote);
+});
+
+
+// ===== CLOSE EDIT MODE FUNCTION =====
+function closeEditMode(noteElement) {
+    noteElement.classList.remove("editing");
+
+    // OPTIONAL: trigger save when closing
+    const textarea = noteElement.querySelector("textarea");
+    const titleInput = noteElement.querySelector("input");
+
+    if (textarea || titleInput) {
+        const id = noteElement.dataset.id;
+
+        const updatedData = {
+            title: titleInput ? titleInput.value : "",
+            content: textarea ? textarea.value : ""
+        };
+
+        // Call your existing update function
+        updateNote(id, updatedData);
+    }
 }
 
 // ===== TRASH ACTIONS =====
