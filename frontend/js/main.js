@@ -202,7 +202,8 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
 // ===== NOTE COLOR PICKER =====
 const presetColors = [
     "#ffffff","#ffadad","#ffd6a5","#fdffb6","#caffbf",
-    "#9bf6ff","#a0c4ff","#bdb2ff","#ffc6ff","#fffffc"
+    "#9bf6ff","#a0c4ff","#bdb2ff","#ffc6ff","#fffffc",
+    "#2a2a40" // 🆕 dark custom color
 ];
 
 function setNoteColor(noteId, color) {
@@ -210,13 +211,13 @@ function setNoteColor(noteId, color) {
     if (!note) return;
 
     note.color = color;
+
     const noteDiv = document.querySelector(`[data-id="${noteId}"]`);
     if (noteDiv) noteDiv.style.backgroundColor = color;
 
     updateNoteColor(noteId, color).catch(console.error);
 }
 
-// 🔥 NEW: Inline color picker popup
 let activeColorPopup = null;
 
 function showColorPopup(noteId, btn) {
@@ -240,7 +241,6 @@ function showColorPopup(noteId, btn) {
 
     document.body.appendChild(popup);
 
-    // Position popup near button
     const rect = btn.getBoundingClientRect();
     let top = rect.bottom + window.scrollY + 5;
     let left = rect.left + window.scrollX;
@@ -322,13 +322,13 @@ function renderNotes(notes) {
     notes.forEach(note => {
         const div = document.createElement("div");
         div.className = "note";
-        div.draggable = !isTrashPage;
         div.dataset.id = note._id;
+        div.draggable = !isTrashPage;
 
-        // Set saved color
-        if (note.color) div.style.backgroundColor = note.color;
+        // 🖌️ preserve note color
+        div.style.backgroundColor = note.color || "#ffffff";
 
-        // ===== BULK SELECTION CHECKBOX =====
+        // ===== BULK SELECTION =====
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.className = "note-checkbox";
@@ -337,7 +337,6 @@ function renderNotes(notes) {
         checkbox.addEventListener("change", () => {
             if (checkbox.checked) selectedNotes.add(note._id);
             else selectedNotes.delete(note._id);
-
             const allCheckboxes = document.querySelectorAll(".note-checkbox");
             document.getElementById("selectAllNotes").checked =
                 Array.from(allCheckboxes).every(cb => cb.checked);
@@ -353,7 +352,7 @@ function renderNotes(notes) {
 
         const contentEl = document.createElement("div");
         contentEl.className = "note-content";
-        contentEl.textContent = getPreviewText(note.content || "");
+        contentEl.innerHTML = note.content || ""; // ✅ preserve HTML
 
         const tagsEl = document.createElement("div");
         tagsEl.className = "tags";
@@ -380,8 +379,7 @@ function renderNotes(notes) {
             deleteBtn.textContent = "❌ Delete";
             deleteBtn.onclick = () => permanentDeleteNoteAction(note._id);
 
-            actionsEl.appendChild(restoreBtn);
-            actionsEl.appendChild(deleteBtn);
+            actionsEl.append(restoreBtn, deleteBtn);
         } else {
             const editBtn = document.createElement("button");
             editBtn.textContent = "Edit";
@@ -406,9 +404,7 @@ function renderNotes(notes) {
                 showColorPopup(note._id, colorBtn);
             };
 
-            actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn);
-
-            // Add Undo / Redo buttons
+            // Undo/redo
             const undoBtn = document.createElement("button");
             undoBtn.textContent = "↩️";
             undoBtn.onclick = () => undoEdit(note._id);
@@ -417,48 +413,15 @@ function renderNotes(notes) {
             redoBtn.textContent = "↪️";
             redoBtn.onclick = () => redoEdit(note._id);
 
-            actionsEl.append(undoBtn, redoBtn);
+            actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn, undoBtn, redoBtn);
         }
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
 
-        // ===== NOTE CLICK: OPEN/COLLAPSE =====
-        contentContainer.addEventListener("click", () => {
-            div.classList.toggle("open");
-        });
-
-        contentContainer.addEventListener("dblclick", () => {
-            enableInlineEdit(div, note);
-        });
-
-        // ===== DRAG EVENTS =====
-        if (!isTrashPage) {
-            div.addEventListener("dragstart", () => {
-                draggedNoteId = note._id;
-                div.classList.add("dragging");
-            });
-
-            div.addEventListener("dragend", () => {
-                draggedNoteId = null;
-                div.classList.remove("dragging");
-            });
-
-            div.addEventListener("dragover", (e) => {
-                e.preventDefault();
-                div.classList.add("drag-over");
-            });
-
-            div.addEventListener("dragleave", () => {
-                div.classList.remove("drag-over");
-            });
-
-            div.addEventListener("drop", async () => {
-                div.classList.remove("drag-over");
-                if (!draggedNoteId || draggedNoteId === note._id) return;
-                await reorderNotesAction(draggedNoteId, note._id);
-            });
-        }
+        // ===== CLICK/DOUBLECLICK =====
+        contentContainer.addEventListener("click", () => div.classList.toggle("open"));
+        contentContainer.addEventListener("dblclick", () => enableInlineEdit(div, note));
 
         if (note.pinned) div.classList.add("pinned");
 
@@ -641,11 +604,15 @@ async function editNote(id) {
 }
 
 // ===== INLINE EDITING =====
+let editingNoteId = null;
+
 function enableInlineEdit(noteEl, note) {
+    if (editingNoteId && editingNoteId !== note._id) return; // only one edit at a time
+    editingNoteId = note._id;
+
     const titleEl = noteEl.querySelector("h3");
     const contentEl = noteEl.querySelector(".note-content");
 
-    // Make editable
     titleEl.contentEditable = true;
     contentEl.contentEditable = true;
 
@@ -654,9 +621,7 @@ function enableInlineEdit(noteEl, note) {
 
     titleEl.focus();
 
-    // Save on blur (click away)
     const saveHandler = () => saveInlineEdit(noteEl, note);
-
     titleEl.addEventListener("blur", saveHandler, { once: true });
     contentEl.addEventListener("blur", saveHandler, { once: true });
 }
@@ -666,23 +631,16 @@ async function saveInlineEdit(noteEl, note) {
     const contentEl = noteEl.querySelector(".note-content");
 
     const newTitle = titleEl.textContent.trim();
-    const newContent = contentEl.textContent.trim();
+    const newContent = contentEl.innerHTML.trim(); // ✅ keep HTML
 
     if (!newTitle && !newContent) {
         alert("Note cannot be empty!");
         return;
     }
 
-    // Init history if needed
-    if (!editHistory[note._id]) {
-        editHistory[note._id] = { undo: [], redo: [] };
-    }
+    if (!editHistory[note._id]) editHistory[note._id] = { undo: [], redo: [] };
 
-    // Push previous state
-    editHistory[note._id].undo.push({
-        title: note.title,
-        content: note.content
-    });
+    editHistory[note._id].undo.push({ title: note.title, content: note.content });
     editHistory[note._id].redo = [];
 
     try {
@@ -694,14 +652,15 @@ async function saveInlineEdit(noteEl, note) {
             updated_at: new Date().toISOString()
         });
 
-        // Turn off editing
         titleEl.contentEditable = false;
         contentEl.contentEditable = false;
 
         titleEl.classList.remove("editing");
         contentEl.classList.remove("editing");
 
-        applyFilters(); // re-render cleanly
+        editingNoteId = null;
+
+        applyFilters(); // re-render notes safely
 
     } catch (err) {
         console.error("Inline update failed:", err);
@@ -826,6 +785,24 @@ document.getElementById("cancelSelectBtn")?.addEventListener("click", () => {
 // ===== THEME TOGGLE =====
 function toggleTheme() {
     document.body.classList.toggle("light");
+}
+
+// ===== TOAST NOTIFICATIONS =====
+function showToast(message) {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerText = message;
+
+    container.appendChild(toast);
+
+    // Auto remove with fade-out
+    setTimeout(() => {
+        toast.classList.add("fade-out");
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
 }
 
 // ===== INIT =====
