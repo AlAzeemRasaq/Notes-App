@@ -3,6 +3,12 @@ let allNotes = [];
 let draggedNoteId = null;
 let searchTimeout = null;
 let currentRequestId = 0; // 🆕 tracks latest request
+window.addEventListener("DOMContentLoaded", () => {
+    const search = document.getElementById("searchInput");
+    if (search) {
+        search.focus();
+    }
+});
 
 // ===== DELETE UX STATE =====
 let lastDeletedNote = null;
