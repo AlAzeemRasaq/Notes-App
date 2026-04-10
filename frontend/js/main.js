@@ -419,6 +419,11 @@ function renderNotes(notes) {
                 showColorPopup(note._id, colorBtn);
             };
 
+            const duplicateBtn = document.createElement("button");
+            duplicateBtn.textContent = "📄";
+            duplicateBtn.title = "Duplicate";
+            duplicateBtn.onclick = () => duplicateNote(note._id);
+
             // Undo/redo
             const undoBtn = document.createElement("button");
             undoBtn.textContent = "↩️";
@@ -428,7 +433,16 @@ function renderNotes(notes) {
             redoBtn.textContent = "↪️";
             redoBtn.onclick = () => redoEdit(note._id);
 
-            actionsEl.append(editBtn, deleteBtn, pinBtn, archiveBtn, colorBtn, undoBtn, redoBtn);
+            actionsEl.append(
+                editBtn,
+                deleteBtn,
+                pinBtn,
+                archiveBtn,
+                colorBtn,
+                duplicateBtn,
+                undoBtn,
+                redoBtn
+            );
         }
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
@@ -958,6 +972,22 @@ if (quickNoteInput) {
             quickNoteInput.value = ""; // clear input
         }
     });
+}
+
+// ===== DUPLICATE NOTE =====
+async function duplicateNote(id) {
+    try {
+        const res = await fetch(`/notes/duplicate/${id}`, {
+            method: "POST"
+        });
+
+        if (!res.ok) throw new Error("Failed to duplicate note");
+
+        loadNotes(); // refresh UI
+    } catch (err) {
+        console.error(err);
+        alert("Failed to duplicate note");
+    }
 }
 
 // ===== INIT =====
