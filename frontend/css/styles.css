@@ -548,6 +548,22 @@ body.light .sidebar {
     }
 }
 
+/* ===== QUICK NOTE BAR ===== */
+.quick-note-bar {
+    padding: 10px;
+    border-bottom: 1px solid #333;
+}
+
+#quickNoteInput {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: #1e1e2f;
+    color: white;
+}
+
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
