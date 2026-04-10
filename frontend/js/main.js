@@ -920,6 +920,46 @@ function showToast(message) {
     }, 2500);
 }
 
+// ===== QUICK NOTE CREATE =====
+async function createQuickNote(content) {
+    try {
+        const res = await fetch("/notes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                title: content.substring(0, 20) || "Quick Note",
+                content: content
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to create note");
+
+        loadNotes(); // refresh notes
+    } catch (err) {
+        console.error(err);
+        alert("Failed to create quick note");
+    }
+}
+
+// ===== QUICK NOTE INPUT HANDLER =====
+const quickNoteInput = document.getElementById("quickNoteInput");
+
+if (quickNoteInput) {
+    quickNoteInput.addEventListener("keypress", async (e) => {
+        if (e.key === "Enter") {
+            const value = quickNoteInput.value.trim();
+
+            if (!value) return;
+
+            await createQuickNote(value);
+
+            quickNoteInput.value = ""; // clear input
+        }
+    });
+}
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
