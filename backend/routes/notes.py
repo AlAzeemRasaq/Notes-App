@@ -316,3 +316,31 @@ def bulk_archive():
     )
 
     return jsonify({"message": f"{result.modified_count} notes archived"})
+
+# ================= DUPLICATE NOTE =================
+@notes_bp.route("/duplicate/<id>", methods=["POST"])
+@jwt_required()
+def duplicate_note(id):
+    user_id = str(get_jwt_identity())
+
+    note = mongo.db.notes.find_one({
+        "_id": ObjectId(id),
+        "user_id": user_id
+    })
+
+    if not note:
+        return jsonify({"error": "Note not found"}), 404
+
+    # Remove old ID and create new note
+    note.pop("_id")
+
+    # Optional: tweak duplicated note
+    note["title"] = note.get("title", "") + " (Copy)"
+    note["created_at"] = datetime.utcnow()
+
+    result = mongo.db.notes.insert_one(note)
+
+    return jsonify({
+        "message": "Note duplicated",
+        "id": str(result.inserted_id)
+    }), 201
