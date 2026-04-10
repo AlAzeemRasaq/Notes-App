@@ -328,6 +328,15 @@ function renderNotes(notes) {
         div.dataset.id = note._id;
         div.draggable = !isTrashPage;
 
+        // ===== DRAG EVENTS =====
+        div.addEventListener("dragstart", () => {
+            draggedNoteId = note._id;
+        });
+
+        div.addEventListener("dragend", () => {
+            draggedNoteId = null;
+        });
+
         // 🖌️ preserve note color
         div.style.backgroundColor = note.color || "#ffffff";
 
