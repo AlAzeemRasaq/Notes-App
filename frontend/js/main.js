@@ -39,6 +39,33 @@ function showEmpty(message = "No notes yet") {
     container.innerHTML = `<div class="state-message">${message}</div>`;
 }
 
+// ===== SIMPLE MARKDOWN PARSER =====
+function parseMarkdown(text) {
+    if (!text) return "";
+
+    let parsed = text;
+
+    // Escape HTML first (prevent XSS issues)
+    parsed = parsed
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // Bold **text**
+    parsed = parsed.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Italic *text*
+    parsed = parsed.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+    // Inline code `text`
+    parsed = parsed.replace(/`(.*?)`/g, "<code>$1</code>");
+
+    // Line breaks
+    parsed = parsed.replace(/\n/g, "<br>");
+
+    return parsed;
+}
+
 // ===== MODAL HANDLING =====
 const modal = document.getElementById("modal");
 const modalOverlay = modal?.querySelector(".modal-overlay");
@@ -364,7 +391,7 @@ function renderNotes(notes) {
 
         const contentEl = document.createElement("div");
         contentEl.className = "note-content";
-        contentEl.innerHTML = note.content || ""; // ✅ preserve HTML
+        contentEl.innerHTML = parseMarkdown(note.content || "");
 
         const tagsEl = document.createElement("div");
         tagsEl.className = "tags";
