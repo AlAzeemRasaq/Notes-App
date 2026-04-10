@@ -580,6 +580,27 @@ body.light .sidebar {
     color: white;
 }
 
+/* ===== MARKDOWN STYLING ===== */
+.note-content strong {
+    font-weight: bold;
+}
+
+.note-content em {
+    font-style: italic;
+}
+
+.note-content code {
+    background: #2a2a40;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.note-content br {
+    line-height: 1.6;
+}
+
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
