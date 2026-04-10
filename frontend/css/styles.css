@@ -564,6 +564,22 @@ body.light .sidebar {
     color: white;
 }
 
+.archive-drop-zone {
+    padding: 15px;
+    margin: 10px;
+    border: 2px dashed #666;
+    text-align: center;
+    border-radius: 10px;
+    color: #aaa;
+    transition: 0.2s;
+}
+
+.archive-drop-zone.active {
+    background-color: #2a2a40;
+    border-color: #aaa;
+    color: white;
+}
+
 /* ===== MOBILE / RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
