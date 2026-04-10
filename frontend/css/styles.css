@@ -6,6 +6,10 @@
     font-family: "Segoe UI", Arial, sans-serif;
 }
 
+html, body {
+    overflow-x: hidden;
+}
+
 body {
     display: flex;
     background-color: #202124;
@@ -18,6 +22,7 @@ body {
     background: #171717;
     padding: 20px;
     height: 100vh;
+    transition: left 0.3s ease;
 }
 
 .sidebar h2 {
@@ -34,6 +39,21 @@ body {
 
 .sidebar nav a:hover {
     background: #2a2a2a;
+}
+
+/* ===== MOBILE MENU BUTTON ===== */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: #4f6bed;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 18px;
 }
 
 /* ===== MAIN CONTAINER ===== */
@@ -107,7 +127,6 @@ button:hover {
     padding: 10px;
     margin-bottom: 15px;
     border-radius: 5px;
-    box-sizing: border-box;
 }
 
 /* ===== TOOLBAR ===== */
@@ -182,6 +201,11 @@ button:hover {
     border: 2px dashed #7c5cff;
 }
 
+.note:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
 /* ===== NOTE OPEN / COLLAPSE ===== */
 .note-inner {
     max-height: 300px;
@@ -195,29 +219,12 @@ button:hover {
     opacity: 1;
 }
 
-/* ===== HOVER ANIMATION ===== */
-.note:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-}
-
 /* ===== EDITING STATE ===== */
 .note.editing {
     cursor: text;
     outline: none;
     box-shadow: 0 0 0 2px #4f46e5, 0 8px 20px rgba(0, 0, 0, 0.15);
     transform: scale(1.02);
-    transition: all 0.15s ease;
-}
-
-.note.editing .note-title {
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
-}
-
-.note.editing .note-content {
-    min-height: 60px;
 }
 
 .note-title,
@@ -229,12 +236,6 @@ button:hover {
     outline: none;
 }
 
-.note-content:empty::before {
-    content: "Start typing...";
-    color: #999;
-    font-style: italic;
-}
-
 /* ===== TAGS ===== */
 .tags span {
     background: #444;
@@ -242,7 +243,6 @@ button:hover {
     margin: 3px;
     border-radius: 6px;
     cursor: pointer;
-    display: inline-block;
 }
 
 /* ===== LIGHT MODE ===== */
@@ -259,7 +259,7 @@ body.light .sidebar {
     background: #ddd;
 }
 
-/* ===== NOTE CHECKBOX ===== */
+/* ===== CHECKBOX ===== */
 .note-checkbox {
     display: none;
     position: absolute;
@@ -267,11 +267,7 @@ body.light .sidebar {
     left: 10px;
 }
 
-.note.select-mode .note-checkbox {
-    display: block;
-}
-
-/* ===== NOTE CONTENT PREVIEW ===== */
+/* ===== NOTE CONTENT ===== */
 .note-content {
     white-space: pre-line;
     display: -webkit-box;
@@ -280,7 +276,6 @@ body.light .sidebar {
     overflow: hidden;
 }
 
-/* ===== LAST EDITED TIMESTAMP ===== */
 .note-updated {
     display: block;
     font-size: 0.75rem;
@@ -290,137 +285,66 @@ body.light .sidebar {
     font-style: italic;
 }
 
-/* ===== UI STATES ===== */
+/* ===== STATES ===== */
 .state-message {
     grid-column: 1 / -1;
     text-align: center;
     padding: 40px 20px;
     font-size: 1.2rem;
     color: #aaa;
-    opacity: 0.8;
 }
 
-/* ===== UNDO TOAST ===== */
-.undo-toast {
+/* ===== TOAST ===== */
+#toastContainer {
     position: fixed;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #222;
-    color: white;
-    padding: 12px 18px;
-    border-radius: 8px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-}
-
-.undo-toast button {
-    background: none;
-    border: none;
-    color: #4da6ff;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* ===== DELETE ANIMATION ===== */
-.note.deleting {
-    animation: shrinkFade 0.4s forwards;
-}
-
-@keyframes shrinkFade {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: scale(0.5);
-        opacity: 0;
-        height: 0;
-        margin: 0;
-        padding: 0;
-    }
-}
-
-/* ===== COLOR PICKER ===== */
-.color-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.color-option {
-    position: relative;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border 0.15s ease;
-}
-
-.color-option:hover {
-    transform: scale(1.2);
-    box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
-}
-
-.color-option.selected {
-    border: 2px solid #000;
-    transform: scale(1.25);
-}
-
-.color-option::after {
-    content: attr(data-color);
-    position: absolute;
-    bottom: 130%;
-    left: 50%;
-    transform: translateX(-50%) translateY(5px);
-    background: #000;
-    color: #fff;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.color-option:hover::after {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-}
-
-/* ===== COLOR POPUP ===== */
-.color-popup {
-    position: absolute;
-    display: flex;
-    gap: 5px;
-    padding: 5px;
-    background: #2a2a40;
-    border: 1px solid #555;
-    border-radius: 6px;
+    right: 20px;
     z-index: 9999;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.color-popup.show {
-    opacity: 1;
-    transform: translateY(0);
+/* ===== QUICK NOTE ===== */
+.quick-note-bar {
+    padding: 10px;
+    border-bottom: 1px solid #333;
 }
 
-.color-popup .color-btn {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 1px solid #ccc;
+#quickNoteInput {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: #1e1e2f;
+    color: white;
+}
+
+/* ===== ARCHIVE DROP ZONE ===== */
+.archive-drop-zone {
+    padding: 15px;
+    margin: 10px;
+    border: 2px dashed #666;
+    text-align: center;
+    border-radius: 10px;
+    color: #aaa;
+    transition: 0.2s;
+}
+
+.archive-drop-zone.active {
+    background-color: #2a2a40;
+    border-color: #aaa;
+    color: white;
+}
+
+/* ===== MARKDOWN ===== */
+.note-content strong { font-weight: bold; }
+.note-content em { font-style: italic; }
+
+.note-content code {
+    background: #2a2a40;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9em;
 }
 
 /* ===== MODAL ===== */
@@ -441,204 +365,55 @@ body.light .sidebar {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
 }
 
 .modal-content {
     position: relative;
     width: 90%;
     max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
     background: #fff;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    transform: translateY(-20px);
-    opacity: 0;
-    transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
-.modal.active .modal-content {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-.close-btn {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    border: none;
-    background: none;
-    font-size: 22px;
-    cursor: pointer;
-}
-
-.modal-title {
-    width: 100%;
-    font-size: 20px;
-    font-weight: bold;
-    border: none;
-    outline: none;
-    margin-bottom: 10px;
-}
-
-.modal-editor {
-    min-height: 200px;
-    outline: none;
-}
-
-.modal-content:hover {
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-}
-
-.state-message {
-    text-align: center;
-    font-size: 1.2rem;
-    color: #555;
-    padding: 2rem;
-    font-style: italic;
-}
-
-#notesContainer .loading {
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-}
-
-/* Toast container (bottom-right corner) */
-#toastContainer {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-}
-
-/* Individual toast */
-.toast {
-    background: #2a2a40;
-    color: #fff;
-    padding: 10px 16px;
-    margin-top: 10px;
-    border-radius: 8px;
-    font-size: 14px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeIn 0.2s forwards;
-}
-
-/* Fade in */
-@keyframes fadeIn {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Fade out */
-.toast.fade-out {
-    animation: fadeOut 0.3s forwards;
-}
-
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-}
-
-/* ===== QUICK NOTE BAR ===== */
-.quick-note-bar {
-    padding: 10px;
-    border-bottom: 1px solid #333;
-}
-
-#quickNoteInput {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    outline: none;
-    background: #1e1e2f;
-    color: white;
-}
-
-.archive-drop-zone {
-    padding: 15px;
-    margin: 10px;
-    border: 2px dashed #666;
-    text-align: center;
-    border-radius: 10px;
-    color: #aaa;
-    transition: 0.2s;
-}
-
-.archive-drop-zone.active {
-    background-color: #2a2a40;
-    border-color: #aaa;
-    color: white;
-}
-
-/* ===== MARKDOWN STYLING ===== */
-.note-content strong {
-    font-weight: bold;
-}
-
-.note-content em {
-    font-style: italic;
-}
-
-.note-content code {
-    background: #2a2a40;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.9em;
-}
-
-.note-content br {
-    line-height: 1.6;
-}
-
-/* ===== MOBILE / RESPONSIVE ===== */
+/* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
-        grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 30%, 250px), 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 }
 
 @media (max-width: 768px) {
+
     body {
         flex-direction: column;
     }
 
+    .mobile-menu-btn {
+        display: block;
+    }
+
     .sidebar {
-        width: 100%;
-        height: auto;
-        display: flex;
-        flex-direction: row;
-        overflow-x: auto;
-        padding: 10px;
+        position: fixed;
+        left: -260px;
+        top: 0;
+        width: 220px;
+        height: 100%;
+        z-index: 999;
+        padding: 15px;
     }
 
-    .sidebar nav {
-        display: flex;
-        gap: 10px;
-    }
-
-    .sidebar nav a {
-        padding: 8px 12px;
+    .sidebar.active {
+        left: 0;
     }
 
     .main-container {
         padding: 10px;
+        margin-top: 50px;
     }
 
     .topbar {
         flex-direction: column;
-        align-items: stretch;
         gap: 10px;
     }
 
@@ -647,20 +422,26 @@ body.light .sidebar {
     }
 
     .notes-grid {
-        grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 45%, 180px), 1fr));
-        gap: 10px;
+        grid-template-columns: 1fr;
     }
 
-    .toolbar {
+    .note-actions {
+        display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
 
-    .create-note {
-        padding: 15px;
+    .note-actions button {
+        font-size: 12px;
+        padding: 5px 8px;
     }
 
     .rich-editor {
-        min-height: 200px;
+        min-height: 180px;
+    }
+
+    .archive-drop-zone {
+        font-size: 14px;
+        padding: 10px;
     }
 }
