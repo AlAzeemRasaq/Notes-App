@@ -2,11 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notes App</title>
     <link rel="stylesheet" href="css/styles.css">
     
     <!-- 🆕 Inline editing uses .editing class (styled in CSS) -->
 </head>
+
+<body>
 
 <!-- 🆕 NOTE EXPANSION MODAL -->
 <div id="noteModal" class="modal hidden">
@@ -29,8 +32,6 @@
     </div>
 </div>
 
-<body>
-
     <!-- Sidebar -->
     <aside class="sidebar">
         <h2>Notes</h2>
@@ -41,6 +42,9 @@
         </nav>
     </aside>
 
+    <!-- ☰ MOBILE MENU BUTTON -->
+    <button id="mobileMenuBtn" class="mobile-menu-btn">☰</button>
+
     <!-- ⚡ QUICK NOTE BAR -->
     <div class="quick-note-bar">
         <input 
@@ -49,13 +53,14 @@
             placeholder="Write a quick note and press Enter..."
         />
     </div>
-    
+
     <!-- Main Content -->
     <div class="main-container">
 
         <!-- Top Bar -->
         <header class="topbar">
             <input id="searchInput" type="text" placeholder="Search notes...">
+
             <div class="auth-buttons">
                 <button onclick="toggleTheme()">🌗</button>
                 <button id="loginBtn">Login</button>
@@ -79,7 +84,6 @@
             </div>
 
             <!-- Rich Text Editor -->
-            <!-- 🆕 Already supports placeholder → mirrors inline editing behaviour -->
             <div id="noteContent" class="rich-editor" contenteditable="true" placeholder="Take a note..."></div>
 
             <!-- Hidden Image Uploader -->
@@ -102,7 +106,6 @@
 
             <button id="addNoteBtn">Add Note</button>
 
-            <!-- 🆕 UX Hint for Inline Editing -->
             <small class="edit-hint">
                 Tip: Double-click a note to edit ✏️
             </small>
@@ -124,11 +127,10 @@
         <div id="archiveDropZone" class="archive-drop-zone">
             Drop here to archive
         </div>
-        
+
         <!-- Notes Grid -->
-        <!-- 🆕 Notes inside here will become inline-editable via JS -->
         <div id="notesContainer" class="notes-grid">
-            <!-- 🆕 Loading / Empty state messages injected here via main.js -->
+            <!-- Notes injected here -->
         </div>
     </div>
 
@@ -189,8 +191,8 @@
 
         editor.addEventListener('paste', e => {
             const items = e.clipboardData.items;
-            for (let i=0;i<items.length;i++){
-                if(!items[i].type.startsWith('image/')) continue;
+            for (let i = 0; i < items.length; i++) {
+                if (!items[i].type.startsWith('image/')) continue;
                 const file = items[i].getAsFile();
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -202,6 +204,7 @@
             }
         });
     </script>
+
     <div id="toastContainer"></div>
 </body>
 </html>
