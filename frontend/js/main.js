@@ -990,6 +990,51 @@ async function duplicateNote(id) {
     }
 }
 
+// ===== ARCHIVE DROP ZONE =====
+const archiveZone = document.getElementById("archiveDropZone");
+
+if (archiveZone) {
+    archiveZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        archiveZone.classList.add("active");
+    });
+
+    archiveZone.addEventListener("dragleave", () => {
+        archiveZone.classList.remove("active");
+    });
+
+    archiveZone.addEventListener("drop", async () => {
+        archiveZone.classList.remove("active");
+
+        if (!draggedNoteId) return;
+
+        await archiveNote(draggedNoteId);
+        draggedNoteId = null;
+    });
+}
+
+// ===== ARCHIVE NOTE (DRAG) =====
+async function archiveNote(id) {
+    try {
+        const res = await fetch(`/notes/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                archived: true
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to archive note");
+
+        loadNotes();
+    } catch (err) {
+        console.error(err);
+        alert("Failed to archive note");
+    }
+}
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
