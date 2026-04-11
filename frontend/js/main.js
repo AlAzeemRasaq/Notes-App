@@ -1071,6 +1071,67 @@ async function archiveNote(id) {
     }
 }
 
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener("keydown", (e) => {
+    // Prevent shortcuts while typing in inputs (except Escape)
+    const isTyping = ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName);
+
+    // Allow Escape always
+    if (isTyping && e.key !== "Escape") return;
+
+    // CTRL / CMD detection
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    // ===== CREATE NOTE =====
+    if (ctrl && e.key === "Enter") {
+        e.preventDefault();
+        createNoteAction();
+    }
+
+    // ===== FOCUS SEARCH =====
+    if (ctrl && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        document.getElementById("searchInput")?.focus();
+    }
+
+    // ===== TOGGLE SELECT MODE =====
+    if (ctrl && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        document.getElementById("selectModeBtn")?.click();
+    }
+
+    // ===== DELETE SELECTED =====
+    if (e.key === "Delete") {
+        if (selectedNotes.size > 0) {
+            e.preventDefault();
+            document.getElementById("bulkDelete")?.click();
+        }
+    }
+
+    // ===== DUPLICATE (if one selected) =====
+    if (ctrl && e.key.toLowerCase() === "d") {
+        if (selectedNotes.size === 1) {
+            e.preventDefault();
+            const id = Array.from(selectedNotes)[0];
+            duplicateNote(id);
+        }
+    }
+
+    // ===== ESCAPE (exit modes) =====
+    if (e.key === "Escape") {
+        // Exit select mode
+        if (selectMode) {
+            document.getElementById("cancelSelectBtn")?.click();
+        }
+
+        // Exit editing
+        const activeNote = document.querySelector(".note.editing");
+        if (activeNote) {
+            closeEditMode(activeNote);
+        }
+    }
+});
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
