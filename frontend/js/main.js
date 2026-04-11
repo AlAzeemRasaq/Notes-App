@@ -31,7 +31,23 @@ const editHistory = {}; // { noteId: { undo: [], redo: [] } }
 // ===== UI STATES =====
 function showLoading() {
     const container = document.getElementById("notesContainer");
-    container.innerHTML = `<div class="state-message">Loading notes...</div>`;
+    container.innerHTML = "";
+
+    const skeletonCount = 6; // tweak if you want
+
+    for (let i = 0; i < skeletonCount; i++) {
+        const div = document.createElement("div");
+        div.className = "skeleton";
+
+        div.innerHTML = `
+            <div class="skeleton-title"></div>
+            <div class="skeleton-text"></div>
+            <div class="skeleton-text"></div>
+            <div class="skeleton-text short"></div>
+        `;
+
+        container.appendChild(div);
+    }
 }
 
 function showEmpty(message = "No notes yet") {
