@@ -88,12 +88,30 @@ modalCloseBtn?.addEventListener("click", closeModal);
 
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
-    const requestId = ++currentRequestId; // 🆕 capture this request's ID
-
-    showLoading(); // 🆕 show loading immediately
+    const requestId = ++currentRequestId;
 
     let notes;
 
+    // ⚡ 1. INSTANT CACHE LOAD (only for normal page, no search)
+    if (!search && !window.isTrashPage) {
+        try {
+            const cached = JSON.parse(localStorage.getItem("notes_cache"));
+            if (cached && cached.length) {
+                allNotes = cached;
+                applyFilters(); // instant UI
+
+                // ⚠️ Don't show loading if cache exists
+            } else {
+                showLoading();
+            }
+        } catch {
+            showLoading();
+        }
+    } else {
+        showLoading();
+    }
+
+    // 🔄 2. FETCH FRESH DATA
     if (window.isTrashPage) {
         notes = await getTrashNotes();
     } else {
@@ -107,7 +125,7 @@ async function loadNotes(search = "") {
 
     const isArchivePage = window.isArchivePage;
 
-    // Archive filtering and keep pin sorting (skip trash)
+    // 🔍 FILTERING (same as yours)
     if (!window.isTrashPage) {
         notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
         notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
@@ -115,7 +133,7 @@ async function loadNotes(search = "") {
 
     allNotes = notes;
 
-    // 🆕 Show empty state if no notes after filtering
+    // 🆕 EMPTY STATE
     if (!notes.length) {
         const message = window.isTrashPage
             ? "Trash is empty"
@@ -125,10 +143,11 @@ async function loadNotes(search = "") {
                     ? "No notes match your search"
                     : "No notes yet";
         showEmpty(message);
-        return; // Skip applyFilters if empty
+        return;
     }
 
-    applyFilters(); // Always go through filter system
+    // 🔄 FINAL RENDER (fresh data)
+    applyFilters();
 }
 
 // ===== DATE FORMATTING =====
