@@ -36,6 +36,8 @@ class Note(db.Model):
         onupdate=datetime.utcnow
     )
 
+    history = db.Column(db.JSON, default=list)
+
 
 # 3️⃣ CATEGORIES TABLE
 class Category(db.Model):
