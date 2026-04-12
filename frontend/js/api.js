@@ -4,16 +4,16 @@
 const API_BASE = "http://127.0.0.1:5000/api";
 
 // =========================
-// LOCAL CACHE
+// LOCAL CACHE (localStorage only)
 // =========================
 const CACHE_KEY = "notes_cache";
 const CACHE_TIMESTAMP_KEY = "notes_cache_time";
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
 function saveCache(data) {
-    if (!data) return invalidateCache(); // 👈 clean invalidation
+    if (!data) return invalidateCache();
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now());
+    localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
 }
 
 function getCache() {
@@ -22,7 +22,7 @@ function getCache() {
 
     if (!raw || !time) return null;
 
-    const isExpired = Date.now() - time > CACHE_TTL;
+    const isExpired = Date.now() - Number(time) > CACHE_TTL;
     if (isExpired) return null;
 
     try {
@@ -38,16 +38,25 @@ function invalidateCache() {
 }
 
 // =========================
-// Generic API Request Helper
+// AUTH HEADERS
 // =========================
-async function apiRequest(endpoint, method = "GET", body = null) {
+function getAuthHeaders() {
     const token = localStorage.getItem("token");
-
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+}
 
-    const options = { method, headers };
-    if ((method === "POST" || method === "PUT") && body) {
+// =========================
+// GENERIC API REQUEST
+// =========================
+async function apiRequest(endpoint, method = "GET", body = null) {
+    const options = {
+        method,
+        headers: getAuthHeaders()
+    };
+
+    if (body && method !== "GET") {
         options.body = JSON.stringify(body);
     }
 
@@ -68,39 +77,37 @@ async function apiRequest(endpoint, method = "GET", body = null) {
 }
 
 // =========================
-// Notes API
+// NOTES API
 // =========================
-export async function getNotes(search = "") {
-    // ⚡ Use cache only for full list
+async function getNotes(search = "") {
+    const cacheKey = search ? `notes_${search}` : "notes_all";
+
     if (!search) {
         const cached = getCache();
         if (cached) return cached;
     }
 
     const data = await apiRequest(
-        `/notes${search ? `?search=${search}` : ""}`
+        search ? `/notes?search=${encodeURIComponent(search)}` : "/notes"
     );
 
-    if (!search) {
-        saveCache(data);
-    }
+    if (!search) saveCache(data);
 
     return data;
 }
 
 export async function createNote(title, content, tags = []) {
-    if (!Array.isArray(tags)) tags = [];
-
     const res = await apiRequest("/notes", "POST", { title, content, tags });
-
-    invalidateCache(); // 👈 AFTER request
+    invalidateCache();
     return res;
 }
 
 export async function updateNote(id, title, content, tags = []) {
-    if (!Array.isArray(tags)) tags = [];
-
-    const res = await apiRequest(`/notes/${id}`, "PUT", { title, content, tags });
+    const res = await apiRequest(`/notes/${id}`, "PUT", {
+        title,
+        content,
+        tags
+    });
 
     invalidateCache();
     return res;
@@ -108,103 +115,85 @@ export async function updateNote(id, title, content, tags = []) {
 
 export async function deleteNote(id) {
     const res = await apiRequest(`/notes/${id}`, "DELETE");
-
     invalidateCache();
     return res;
 }
 
 export async function togglePin(id) {
     const res = await apiRequest(`/notes/pin/${id}`, "PUT");
-
     invalidateCache();
     return res;
 }
 
 export async function toggleArchive(id) {
     const res = await apiRequest(`/notes/archive/${id}`, "PUT");
-
     invalidateCache();
     return res;
 }
 
 export async function reorderNotes(ordered_ids) {
     const res = await apiRequest("/notes/reorder", "PUT", { ordered_ids });
-
     invalidateCache();
     return res;
 }
 
 // =========================
-// Note Color API
+// COLOR UPDATE (SAFE VERSION)
 // =========================
 export async function updateNoteColor(id, color) {
-    const res = await apiRequest(`/notes/${id}`, "PUT", { color });
+    // backend expects full update payload
+    const res = await apiRequest(`/notes/${id}`, "PUT", {
+        color
+    });
 
     invalidateCache();
     return res;
 }
 
 // =========================
-// Trash & Restore
+// TRASH + RESTORE
 // =========================
 export async function getTrashNotes() {
-    return await apiRequest("/notes/trash", "GET"); // 🚫 no cache
+    return await apiRequest("/notes/trash");
 }
 
 export async function restoreNote(id) {
-    try {
-        const res = await apiRequest(`/notes/restore/${id}`, "PUT");
-
-        invalidateCache();
-        return res;
-
-    } catch (err) {
-        console.error("Failed to restore note:", err);
-        throw err; // let UI handle it too
-    }
+    const res = await apiRequest(`/notes/restore/${id}`, "PUT");
+    invalidateCache();
+    return res;
 }
 
 export async function deleteNotePermanently(id) {
     const res = await apiRequest(`/notes/permanent/${id}`, "DELETE");
-
     invalidateCache();
     return res;
 }
 
 // =========================
-// Bulk Actions
+// BULK ACTIONS
 // =========================
 export async function bulkDelete(note_ids) {
     const res = await apiRequest("/notes/bulk-delete", "POST", { note_ids });
-
     invalidateCache();
     return res;
 }
 
 export async function bulkArchive(note_ids) {
     const res = await apiRequest("/notes/bulk-archive", "POST", { note_ids });
-
     invalidateCache();
     return res;
 }
 
 // =========================
-// Auth Headers (legacy)
+// NOTE HISTORY
 // =========================
-function getAuthHeaders() {
-    const token = localStorage.getItem("token");
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    return headers;
+async function getNoteHistory(id) {
+    return await apiRequest(`/notes/history/${id}`);
 }
 
 // =========================
-// Note History API
+// OPTIONAL SEARCH WRAPPER
 // =========================
-async function getNoteHistory(id) {
-    const res = await fetch(`/api/notes/history/${id}`, {
-        headers: getAuthHeaders()
-    });
-
-    return res.json();
+async function searchNotes(query) {
+    return getNotes(query);
 }
