@@ -197,3 +197,14 @@ function getAuthHeaders() {
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
 }
+
+// =========================
+// Note History API
+// =========================
+async function getNoteHistory(id) {
+    const res = await fetch(`/api/notes/history/${id}`, {
+        headers: getAuthHeaders()
+    });
+
+    return res.json();
+}
