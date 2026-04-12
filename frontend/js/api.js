@@ -152,10 +152,16 @@ export async function getTrashNotes() {
 }
 
 export async function restoreNote(id) {
-    const res = await apiRequest(`/notes/restore/${id}`, "PUT");
+    try {
+        const res = await apiRequest(`/notes/restore/${id}`, "PUT");
 
-    invalidateCache();
-    return res;
+        invalidateCache();
+        return res;
+
+    } catch (err) {
+        console.error("Failed to restore note:", err);
+        throw err; // let UI handle it too
+    }
 }
 
 export async function deleteNotePermanently(id) {
