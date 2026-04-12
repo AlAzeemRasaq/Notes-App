@@ -1155,6 +1155,29 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
+// ===== NOTE HISTORY =====
+async function openHistory(noteId) {
+    const history = await getNoteHistory(noteId);
+
+    const list = document.getElementById("historyList");
+    list.innerHTML = "";
+
+    history.reverse().forEach(version => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+
+        div.innerHTML = `
+            <strong>${version.title}</strong>
+            <p>${version.content}</p>
+            <small>${new Date(version.updated_at).toLocaleString()}</small>
+        `;
+
+        list.appendChild(div);
+    });
+
+    document.getElementById("historyModal").classList.remove("hidden");
+}
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
