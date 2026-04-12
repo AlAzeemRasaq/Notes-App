@@ -303,23 +303,50 @@ def permanent_delete(id):
 @jwt_required()
 def toggle_pin(id):
     user_id = str(get_jwt_identity())
-    note = mongo.db.notes.find_one({"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}})
-    if not note:
-        return jsonify({"message":"Note not found"}), 404
 
-    mongo.db.notes.update_one(
-        {"_id": ObjectId(id)},
-        {"$set": {"pinned": not note.get("pinned", False)}}
-    )
-  
+    note = mongo.db.notes.find_one({
+        "_id": ObjectId(id),
+        "user_id": user_id,
+        "trashed": {"$ne": True}
+    })
+
+    if not note:
+        return jsonify({"message": "Note not found"}), 404
+
+    is_pinned = note.get("pinned", False)
+
+    # ================= UNPIN =================
+    if is_pinned:
+        mongo.db.notes.update_one(
+            {"_id": ObjectId(id)},
+            {
+                "$set": {
+                    "pinned": False,
+                    "pin_order": 0
+                }
+            }
+        )
+        return jsonify({"message": "Unpinned"}), 200
+
+    # ================= PIN =================
     highest = mongo.db.notes.find_one(
         {"user_id": user_id, "pinned": True},
         sort=[("pin_order", -1)]
     )
 
-    next_order = (highest.get("pin_order", 0) + 1) if highest else 0
-  
-    return jsonify({"message":"Pin toggled"})
+    next_order = (highest.get("pin_order", 0) + 1) if highest else 1
+
+    mongo.db.notes.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "pinned": True,
+                "pin_order": next_order
+            }
+        }
+    )
+
+    return jsonify({"message": "Pinned"}), 200
 
 # ================= ARCHIVE NOTE =================
 @notes_bp.route("/archive/<id>", methods=["PUT"])
