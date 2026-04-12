@@ -393,19 +393,3 @@ def duplicate_note(id):
         "message": "Note duplicated",
         "id": str(result.inserted_id)
     }), 201
-
-# ================= GET NOTE HISTORY =================
-@notes_bp.route("/history/<id>", methods=["GET"])
-@jwt_required()
-def get_note_history(id):
-    user_id = str(get_jwt_identity())
-
-    note = mongo.db.notes.find_one(
-        {"_id": ObjectId(id), "user_id": user_id},
-        {"history": 1}
-    )
-
-    if not note:
-        return jsonify({"error": "Note not found"}), 404
-
-    return jsonify(note.get("history", [])), 200
