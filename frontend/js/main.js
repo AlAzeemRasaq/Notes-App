@@ -1194,6 +1194,23 @@ function closeHistory() {
     document.getElementById("historyModal").classList.add("hidden");
 }
 
+// ===== DEBOUNCE UTILITY =====
+function debounce(fn, delay = 300) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), delay);
+    };
+}
+
+const debouncedLoadNotes = debounce((value) => {
+    loadNotes(value);
+}, 300);
+
+searchInput.addEventListener("input", (e) => {
+    debouncedLoadNotes(e.target.value);
+});
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
