@@ -25,6 +25,9 @@ let currentTag = null;
 let selectedNotes = new Set();
 let selectMode = false; // toggles checkbox mode
 
+// Sort mode (default, date, title)
+let sortMode = "default";
+
 // ===== EDIT HISTORY STACKS =====
 const editHistory = {}; // { noteId: { undo: [], redo: [] } }
 
@@ -102,7 +105,7 @@ function closeModal() {
 modalOverlay?.addEventListener("click", closeModal);
 modalCloseBtn?.addEventListener("click", closeModal);
 
-// ===== LOAD NOTES =====
+// ===== LOAD NOTES (OPTIMISED) =====
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId;
 
@@ -179,6 +182,17 @@ async function loadNotes(search = "") {
 
         showEmpty(message);
         return;
+    }
+
+    // 🔄 4. SORTING (moved here for better UX)
+    notes = search
+    ? await getNotes(search)
+    : await getNotes();
+
+    if (sortMode === "recent") {
+        notes.sort((a, b) =>
+            new Date(b.updated_at) - new Date(a.updated_at)
+        );
     }
 
     // 🔄 FINAL RENDER
