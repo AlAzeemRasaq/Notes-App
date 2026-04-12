@@ -49,6 +49,7 @@ def validate_note_input(data):
 def create_note():
     user_id = str(get_jwt_identity())
     data = get_json_request()
+    data["history"] = []
 
     error = validate_note_input(data)
     if error:
@@ -193,7 +194,7 @@ def update_note(id):
         "title": note.get("title"),
         "content": note.get("content"),
         "tags": note.get("tags", []),
-        "updated_at": note.get("updated_at", datetime.utcnow()).isoformat()
+        "updated_at": note.get("updated_at", datetime.utcnow())
     }
 
     # 🟡 PUSH TO HISTORY (keep last 10)
@@ -222,6 +223,9 @@ def update_note(id):
         {"_id": ObjectId(id)},
         {"$set": updated_fields}
     )
+
+    if not ObjectId.is_valid(id):
+        return jsonify({"message": "Invalid note id"}), 400
 
     return jsonify({"message": "Note updated"})
 
