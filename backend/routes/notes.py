@@ -311,7 +311,14 @@ def toggle_pin(id):
         {"_id": ObjectId(id)},
         {"$set": {"pinned": not note.get("pinned", False)}}
     )
+  
+    highest = mongo.db.notes.find_one(
+        {"user_id": user_id, "pinned": True},
+        sort=[("pin_order", -1)]
+    )
 
+    next_order = (highest.get("pin_order", 0) + 1) if highest else 0
+  
     return jsonify({"message":"Pin toggled"})
 
 # ================= ARCHIVE NOTE =================
