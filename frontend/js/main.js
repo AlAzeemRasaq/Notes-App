@@ -154,9 +154,15 @@ async function loadNotes(search = "") {
             isArchivePage ? n.archived : !n.archived
         );
 
-        notes.sort((a, b) =>
-            (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
-        );
+        notes.sort((a, b) => {
+            if (a.pinned !== b.pinned) return b.pinned - a.pinned;
+
+            if (a.pinned && b.pinned) {
+                return (b.pin_order || 0) - (a.pin_order || 0);
+            }
+
+            return 0;
+        });
     }
 
     allNotes = notes;
