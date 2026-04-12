@@ -157,7 +157,7 @@ def get_trash_notes():
         notes.append(note)
     return jsonify(notes)
 
-# ================= UPDATE NOTE =================
+# ================= UPDATE NOTE + HISTORY (FIXED) =================
 @notes_bp.route("/<id>", methods=["PUT"])
 @jwt_required()
 def update_note(id):
@@ -174,28 +174,73 @@ def update_note(id):
     if not isinstance(tags, list):
         tags = []
 
-    # 🆕 Handle color update
     color = (data.get("color") or "#ffffff").strip()
     if not color.startswith("#") or len(color) not in [4,7]:
         color = "#ffffff"
 
+    # 🟡 FETCH CURRENT NOTE FIRST (IMPORTANT FOR HISTORY)
+    note = mongo.db.notes.find_one({
+        "_id": ObjectId(id),
+        "user_id": user_id,
+        "trashed": {"$ne": True}
+    })
+
+    if not note:
+        return jsonify({"message": "Note not found"}), 404
+
+    # 🟡 BUILD HISTORY ENTRY
+    history_entry = {
+        "title": note.get("title"),
+        "content": note.get("content"),
+        "tags": note.get("tags", []),
+        "updated_at": note.get("updated_at", datetime.utcnow()).isoformat()
+    }
+
+    # 🟡 PUSH TO HISTORY (keep last 10)
+    mongo.db.notes.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$push": {
+                "history": {
+                    "$each": [history_entry],
+                    "$slice": -10
+                }
+            }
+        }
+    )
+
+    # 🟡 UPDATE NOTE
     updated_fields = {
         "title": title,
         "content": content,
         "tags": tags,
-        "color": color,  # 🆕
+        "color": color,
         "updated_at": datetime.utcnow()
     }
 
-    result = mongo.db.notes.update_one(
-        {"_id": ObjectId(id), "user_id": user_id, "trashed": {"$ne": True}},
+    mongo.db.notes.update_one(
+        {"_id": ObjectId(id)},
         {"$set": updated_fields}
     )
 
-    if result.matched_count == 0:
-        return jsonify({"message":"Note not found"}), 404
+    return jsonify({"message": "Note updated"})
 
-    return jsonify({"message":"Note updated"})
+
+# ================= HISTORY ENDPOINT =================
+@notes_bp.route("/history/<id>", methods=["GET"])
+@jwt_required()
+def get_note_history(id):
+    user_id = str(get_jwt_identity())
+
+    note = mongo.db.notes.find_one(
+        {"_id": ObjectId(id), "user_id": user_id},
+        {"history": 1}
+    )
+
+    if not note:
+        return jsonify({"error": "Note not found"}), 404
+
+    return jsonify(note.get("history", [])), 200
 
 # ================= SOFT DELETE =================
 @notes_bp.route("/<id>", methods=["DELETE"])
@@ -344,3 +389,19 @@ def duplicate_note(id):
         "message": "Note duplicated",
         "id": str(result.inserted_id)
     }), 201
+
+# ================= GET NOTE HISTORY =================
+@notes_bp.route("/history/<id>", methods=["GET"])
+@jwt_required()
+def get_note_history(id):
+    user_id = str(get_jwt_identity())
+
+    note = mongo.db.notes.find_one(
+        {"_id": ObjectId(id), "user_id": user_id},
+        {"history": 1}
+    )
+
+    if not note:
+        return jsonify({"error": "Note not found"}), 404
+
+    return jsonify(note.get("history", [])), 200
