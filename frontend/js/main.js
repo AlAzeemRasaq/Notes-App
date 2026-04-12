@@ -106,34 +106,38 @@ modalCloseBtn?.addEventListener("click", closeModal);
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId;
 
-    let notes;
+    let notes = [];
 
-    // ⚡ 1. INSTANT CACHE LOAD (only for normal page, no search)
+    // ⚡ 1. INSTANT CACHE LOAD (only normal page, no search)
     if (!search && !window.isTrashPage) {
         try {
             const cached = JSON.parse(localStorage.getItem("notes_cache"));
-            if (cached && cached.length) {
+
+            if (Array.isArray(cached) && cached.length > 0) {
                 allNotes = cached;
                 applyFilters(); // instant UI
-
-                // ⚠️ Don't show loading if cache exists
             } else {
                 showLoading();
             }
-        } catch {
+        } catch (err) {
+            console.warn("Cache read failed:", err);
             showLoading();
         }
     } else {
         showLoading();
     }
 
-    // 🔄 2. FETCH FRESH DATA
-    if (window.isTrashPage) {
-        notes = await getTrashNotes();
-    } else {
-        notes = search
-            ? await getNotes(search)
-            : await getNotes();
+    // 🔄 2. FETCH FRESH DATA (single clean call)
+    try {
+        if (window.isTrashPage) {
+            notes = await getTrashNotes();
+        } else {
+            notes = await getNotes(search || "");
+        }
+    } catch (err) {
+        console.error("Failed to load notes:", err);
+        showEmpty("Failed to load notes ❌");
+        return;
     }
 
     // 🛑 IGNORE outdated responses
@@ -141,13 +145,27 @@ async function loadNotes(search = "") {
 
     const isArchivePage = window.isArchivePage;
 
-    // 🔍 FILTERING (same as yours)
-    if (!window.isTrashPage) {
-        notes = notes.filter(n => isArchivePage ? n.archived : !n.archived);
-        notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    // 🔍 FILTERING (unchanged logic, safer guard)
+    if (!window.isTrashPage && Array.isArray(notes)) {
+        notes = notes.filter(n =>
+            isArchivePage ? n.archived : !n.archived
+        );
+
+        notes.sort((a, b) =>
+            (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
+        );
     }
 
     allNotes = notes;
+
+    // 💾 3. UPDATE CACHE (IMPORTANT FIX)
+    if (!search && !window.isTrashPage) {
+        try {
+            localStorage.setItem("notes_cache", JSON.stringify(notes));
+        } catch (err) {
+            console.warn("Cache write failed:", err);
+        }
+    }
 
     // 🆕 EMPTY STATE
     if (!notes.length) {
@@ -158,11 +176,12 @@ async function loadNotes(search = "") {
                 : search
                     ? "No notes match your search"
                     : "No notes yet";
+
         showEmpty(message);
         return;
     }
 
-    // 🔄 FINAL RENDER (fresh data)
+    // 🔄 FINAL RENDER
     applyFilters();
 }
 
