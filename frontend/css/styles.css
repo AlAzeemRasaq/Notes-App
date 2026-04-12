@@ -456,6 +456,12 @@ body.light .sidebar {
     font-weight: bold;
 }
 
+/* ===== SORT BUTTONS ===== */
+#sortRecentBtn.active {
+    background: #4a90e2;
+    color: white;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
