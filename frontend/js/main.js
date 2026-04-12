@@ -423,13 +423,16 @@ function renderNotes(notes) {
         checkbox.className = "note-checkbox";
         checkbox.checked = selectedNotes.has(note._id);
         checkbox.style.display = selectMode ? "inline-block" : "none";
+
         checkbox.addEventListener("change", () => {
             if (checkbox.checked) selectedNotes.add(note._id);
             else selectedNotes.delete(note._id);
+
             const allCheckboxes = document.querySelectorAll(".note-checkbox");
             document.getElementById("selectAllNotes").checked =
                 Array.from(allCheckboxes).every(cb => cb.checked);
         });
+
         div.appendChild(checkbox);
 
         // ===== NOTE CONTENT =====
@@ -454,11 +457,13 @@ function renderNotes(notes) {
 
         const updatedEl = document.createElement("small");
         updatedEl.className = "note-updated";
-        updatedEl.textContent = note.updated_at ? `Last edited: ${formatDate(note.updated_at)}` : "";
+        updatedEl.textContent =
+            note.updated_at ? `Last edited: ${formatDate(note.updated_at)}` : "";
 
         const actionsEl = document.createElement("div");
         actionsEl.className = "note-actions";
 
+        // ================= TRASH MODE =================
         if (isTrashPage) {
             const restoreBtn = document.createElement("button");
             restoreBtn.textContent = "♻️ Restore";
@@ -469,20 +474,20 @@ function renderNotes(notes) {
             deleteBtn.onclick = () => permanentDeleteNoteAction(note._id);
 
             actionsEl.append(restoreBtn, deleteBtn);
-        } else {
+        }
+
+        // ================= NORMAL MODE =================
+        else {
             const editBtn = document.createElement("button");
             editBtn.textContent = "Edit";
             editBtn.onclick = (e) => {
                 e.stopPropagation();
 
-                // Remove editing from other notes
                 document.querySelectorAll(".note.editing").forEach(n => {
                     n.classList.remove("editing");
                 });
 
-                // Set this note to editing
                 div.classList.add("editing");
-
                 enableInlineEdit(div, note);
             };
 
@@ -510,6 +515,15 @@ function renderNotes(notes) {
             duplicateBtn.title = "Duplicate";
             duplicateBtn.onclick = () => duplicateNote(note._id);
 
+            // ================= 🆕 HISTORY BUTTON =================
+            const historyBtn = document.createElement("button");
+            historyBtn.textContent = "🕒";
+            historyBtn.title = "History";
+            historyBtn.onclick = (e) => {
+                e.stopPropagation();
+                openHistory(note._id);
+            };
+
             // Undo/redo
             const undoBtn = document.createElement("button");
             undoBtn.textContent = "↩️";
@@ -526,6 +540,7 @@ function renderNotes(notes) {
                 archiveBtn,
                 colorBtn,
                 duplicateBtn,
+                historyBtn, // 👈 added here
                 undoBtn,
                 redoBtn
             );
@@ -538,14 +553,11 @@ function renderNotes(notes) {
         contentContainer.addEventListener("click", () => div.classList.toggle("open"));
 
         contentContainer.addEventListener("dblclick", () => {
-            // Remove editing from any other notes
             document.querySelectorAll(".note.editing").forEach(n => {
                 n.classList.remove("editing");
             });
 
-            // Set this note as editing
             div.classList.add("editing");
-
             enableInlineEdit(div, note);
         });
 
