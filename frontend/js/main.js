@@ -364,16 +364,31 @@ function showModal(title, message, onConfirm, onCancel) {
 // ===== DELETE NOTE ANIMATION =====
 function deleteNoteAnimated(noteDiv, noteId) {
     noteDiv.classList.add("deleting");
+
     setTimeout(async () => {
         const note = allNotes.find(n => n._id === noteId);
+
+        // 🧠 Store deleted note
         lastDeletedNote = note;
 
+        // 🧹 Remove from UI instantly
         allNotes = allNotes.filter(n => n._id !== noteId);
         applyFilters();
 
+        // 🗑️ Backend delete
         await deleteNote(noteId);
+
+        // 🔥 Show undo toast
         showUndoToast();
-    }, 400); // match CSS animation
+
+        // ⏳ Auto clear after 5s
+        clearTimeout(undoTimeout);
+        undoTimeout = setTimeout(() => {
+            lastDeletedNote = null;
+            document.getElementById("undoToast").classList.add("hidden");
+        }, 5000);
+
+    }, 400);
 }
 
 // ===== RENDER NOTES =====
@@ -598,37 +613,10 @@ async function createNoteAction() {
     }
 }
 
-// ===== DELETE NOTE =====
-async function deleteNoteWithUndo(noteId) {
-    const noteElement = document.querySelector(`[data-id="${noteId}"]`);
-    if (!noteElement) return;
-
-    noteElement.classList.add("deleting");
-
-    setTimeout(async () => {
-        const note = allNotes.find(n => n._id === noteId);
-        lastDeletedNote = note;
-
-        allNotes = allNotes.filter(n => n._id !== noteId);
-        applyFilters();
-
-        await deleteNote(noteId);
-
-        showUndoToast();
-    }, 200);
-}
-
 // ===== UNDO TOAST =====
 function showUndoToast() {
     const toast = document.getElementById("undoToast");
     toast.classList.remove("hidden");
-
-    clearTimeout(undoTimeout);
-
-    undoTimeout = setTimeout(() => {
-        toast.classList.add("hidden");
-        lastDeletedNote = null;
-    }, 5000);
 }
 
 // ===== UNDO DELETE =====
