@@ -1178,6 +1178,10 @@ async function openHistory(noteId) {
     document.getElementById("historyModal").classList.remove("hidden");
 }
 
+function closeHistory() {
+    document.getElementById("historyModal").classList.add("hidden");
+}
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
