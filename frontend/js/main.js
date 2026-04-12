@@ -1244,6 +1244,15 @@ searchInput.addEventListener("input", (e) => {
     debouncedLoadNotes(e.target.value);
 });
 
+// ===== SORTING =====
+document.getElementById("sortRecentBtn")?.addEventListener("click", () => {
+    sortMode = sortMode === "recent" ? "default" : "recent";
+
+    document.getElementById("sortRecentBtn").classList.toggle("active");
+
+    loadNotes(currentSearch);
+});
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
