@@ -442,3 +442,23 @@ def get_tags():
             tag_set.add(tag.lower())
 
     return jsonify(sorted(tag_set)), 200
+
+# ================= BULK TAG UPDATE =================
+@notes_bp.route("/bulk-tags", methods=["POST"])
+@jwt_required()
+def bulk_update_tags():
+    user_id = str(get_jwt_identity())
+    data = request.get_json()
+
+    note_ids = data.get("note_ids", [])
+    tags = data.get("tags", [])
+
+    if not note_ids:
+        return jsonify({"message": "No notes selected"}), 400
+
+    mongo.db.notes.update_many(
+        {"_id": {"$in": [ObjectId(n) for n in note_ids]}, "user_id": user_id},
+        {"$set": {"tags": tags}}
+    )
+
+    return jsonify({"message": "Tags updated"}), 200
