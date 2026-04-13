@@ -482,6 +482,12 @@ body.light .sidebar {
     background: #444;
 }
 
+/* ===== BULK TAG INPUT ===== */
+#bulkTagInput {
+    margin-right: 10px;
+    width: 200px;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
