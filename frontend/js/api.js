@@ -193,3 +193,8 @@ export async function bulkUpdateTags(note_ids, tags) {
     invalidateCache();
     return res;
 }
+
+// NOTE PAGINATION
+export async function getNotesPaginated(page = 1, limit = 20) {
+    return await apiRequest(`/notes?page=${page}&limit=${limit}`);
+}
