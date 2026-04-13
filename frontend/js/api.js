@@ -1,11 +1,7 @@
-// =========================
 // API Base URL
-// =========================
 const API_BASE = "http://127.0.0.1:5000/api";
 
-// =========================
 // LOCAL CACHE (localStorage only)
-// =========================
 const CACHE_KEY = "notes_cache";
 const CACHE_TIMESTAMP_KEY = "notes_cache_time";
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
@@ -37,9 +33,7 @@ function invalidateCache() {
     localStorage.removeItem(CACHE_TIMESTAMP_KEY);
 }
 
-// =========================
 // AUTH HEADERS
-// =========================
 function getAuthHeaders() {
     const token = localStorage.getItem("token");
     const headers = { "Content-Type": "application/json" };
@@ -47,9 +41,7 @@ function getAuthHeaders() {
     return headers;
 }
 
-// =========================
 // GENERIC API REQUEST
-// =========================
 async function apiRequest(endpoint, method = "GET", body = null) {
     const options = {
         method,
@@ -76,9 +68,7 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     return res.status !== 204 ? await res.json() : null;
 }
 
-// =========================
 // NOTES API
-// =========================
 async function getNotes(search = "") {
     const cacheKey = search ? `notes_${search}` : "notes_all";
 
@@ -137,9 +127,7 @@ export async function reorderNotes(ordered_ids) {
     return res;
 }
 
-// =========================
 // COLOR UPDATE (SAFE VERSION)
-// =========================
 export async function updateNoteColor(id, color) {
     // backend expects full update payload
     const res = await apiRequest(`/notes/${id}`, "PUT", {
@@ -150,9 +138,7 @@ export async function updateNoteColor(id, color) {
     return res;
 }
 
-// =========================
 // TRASH + RESTORE
-// =========================
 export async function getTrashNotes() {
     return await apiRequest("/notes/trash");
 }
@@ -169,9 +155,7 @@ export async function deleteNotePermanently(id) {
     return res;
 }
 
-// =========================
 // BULK ACTIONS
-// =========================
 export async function bulkDelete(note_ids) {
     const res = await apiRequest("/notes/bulk-delete", "POST", { note_ids });
     invalidateCache();
@@ -184,16 +168,17 @@ export async function bulkArchive(note_ids) {
     return res;
 }
 
-// =========================
 // NOTE HISTORY
-// =========================
 async function getNoteHistory(id) {
     return await apiRequest(`/notes/history/${id}`);
 }
 
-// =========================
 // OPTIONAL SEARCH WRAPPER
-// =========================
 async function searchNotes(query) {
     return getNotes(query);
+}
+
+// TAGS API
+export async function getTags() {
+    return await apiRequest("/notes/tags");
 }
