@@ -182,3 +182,14 @@ async function searchNotes(query) {
 export async function getTags() {
     return await apiRequest("/notes/tags");
 }
+
+// BULK UPDATE TAGS
+export async function bulkUpdateTags(note_ids, tags) {
+    const res = await apiRequest("/notes/bulk-tags", "POST", {
+        note_ids,
+        tags
+    });
+
+    invalidateCache();
+    return res;
+}
