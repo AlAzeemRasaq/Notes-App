@@ -427,3 +427,18 @@ def duplicate_note(id):
         "message": "Note duplicated",
         "id": str(result.inserted_id)
     }), 201
+
+# ================= TAG SUGGESTIONS =================
+@notes_bp.route("/tags", methods=["GET"])
+@jwt_required()
+def get_tags():
+    user_id = str(get_jwt_identity())
+
+    notes = mongo.db.notes.find({"user_id": user_id}, {"tags": 1})
+
+    tag_set = set()
+    for note in notes:
+        for tag in note.get("tags", []):
+            tag_set.add(tag.lower())
+
+    return jsonify(sorted(tag_set)), 200
