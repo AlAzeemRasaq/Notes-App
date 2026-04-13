@@ -104,11 +104,23 @@ def get_notes():
     user_id = str(get_jwt_identity())
     search_query = request.args.get("search", "").strip()
 
+    # 🆕 pagination params
+    try:
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 20))
+    except:
+        page = 1
+        limit = 20
+
+    skip = (page - 1) * limit
+
     query = {"user_id": user_id, "trashed": {"$ne": True}}
 
+    # 🔍 SEARCH FILTER
     if search_query:
         terms = search_query.split()
         regex_conditions = []
+
         for term in terms:
             regex = {"$regex": term, "$options": "i"}
             regex_conditions.append({
@@ -118,10 +130,17 @@ def get_notes():
                     {"tags": regex}
                 ]
             })
+
         query["$and"] = regex_conditions
 
+    # 🆕 PAGINATED QUERY
+    cursor = mongo.db.notes.find(query)\
+        .sort([("position", 1)])\
+        .skip(skip)\
+        .limit(limit)
+
     notes = []
-    for note in mongo.db.notes.find(query, sort=[("position", 1)]):
+    for note in cursor:
         note["_id"] = str(note["_id"])
         notes.append(note)
 
