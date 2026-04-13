@@ -69,28 +69,19 @@ async function apiRequest(endpoint, method = "GET", body = null) {
 }
 
 // NOTES API
-async function getNotes(search = "", page = 1, limit = 20) {
-    const isFirstPage = page === 1 && !search;
+async function getNotes(search = "") {
+    const cacheKey = search ? `notes_${search}` : "notes_all";
 
-    // ✅ Only cache FIRST page without search
-    if (isFirstPage) {
+    if (!search) {
         const cached = getCache();
         if (cached) return cached;
     }
 
-    // 🔗 Build query params
-    let endpoint = `/notes?page=${page}&limit=${limit}`;
+    const data = await apiRequest(
+        search ? `/notes?search=${encodeURIComponent(search)}` : "/notes"
+    );
 
-    if (search) {
-        endpoint += `&search=${encodeURIComponent(search)}`;
-    }
-
-    const data = await apiRequest(endpoint);
-
-    // ✅ Save cache ONLY for first page
-    if (isFirstPage) {
-        saveCache(data);
-    }
+    if (!search) saveCache(data);
 
     return data;
 }
