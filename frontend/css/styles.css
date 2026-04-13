@@ -488,6 +488,13 @@ body.light .sidebar {
     width: 200px;
 }
 
+/* ===== LOADING MORE INDICATOR ===== */
+.loading-more {
+    text-align: center;
+    padding: 10px;
+    opacity: 0.7;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
