@@ -1299,6 +1299,28 @@ tagInput?.addEventListener("input", () => {
 // call once on load
 loadTags();
 
+// ===== BULK UPDATE TAGS =====
+document.getElementById("applyBulkTags")?.addEventListener("click", async () => {
+    if (selectedNotes.size === 0) {
+        alert("No notes selected!");
+        return;
+    }
+
+    const raw = document.getElementById("bulkTagInput").value;
+    const tags = raw.split(",").map(t => t.trim()).filter(Boolean);
+
+    await bulkUpdateTags(Array.from(selectedNotes), tags);
+
+    // update locally
+    allNotes.forEach(n => {
+        if (selectedNotes.has(n._id)) {
+            n.tags = tags;
+        }
+    });
+
+    applyFilters();
+});
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
