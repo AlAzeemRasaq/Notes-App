@@ -28,6 +28,11 @@ let selectMode = false; // toggles checkbox mode
 // Sort mode (default, date, title)
 let sortMode = "default";
 
+// More states
+let currentPage = 1;
+let isLoadingMore = false;
+let hasMore = true;
+
 // ===== EDIT HISTORY STACKS =====
 const editHistory = {}; // { noteId: { undo: [], redo: [] } }
 
@@ -108,6 +113,8 @@ modalCloseBtn?.addEventListener("click", closeModal);
 // ===== LOAD NOTES (OPTIMISED) =====
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId;
+    currentPage = 1;
+    hasMore = true;
 
     let notes = [];
 
@@ -1319,6 +1326,35 @@ document.getElementById("applyBulkTags")?.addEventListener("click", async () => 
     });
 
     applyFilters();
+});
+
+// ===== INFINITE SCROLL =====
+async function loadMoreNotes() {
+    if (isLoadingMore || !hasMore) return;
+
+    isLoadingMore = true;
+
+    const newNotes = await getNotesPaginated(currentPage + 1);
+
+    if (!newNotes.length) {
+        hasMore = false;
+        return;
+    }
+
+    currentPage++;
+
+    allNotes = [...allNotes, ...newNotes];
+    applyFilters();
+
+    isLoadingMore = false;
+}
+
+window.addEventListener("scroll", () => {
+    if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 200
+    ) {
+        loadMoreNotes();
+    }
 });
 
 // ===== INIT =====
