@@ -462,6 +462,26 @@ body.light .sidebar {
     color: white;
 }
 
+/* ===== TAG SUGGESTIONS ===== */
+.tag-suggestions {
+    position: absolute;
+    background: #2a2a40;
+    border-radius: 6px;
+    padding: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+    display: none;
+}
+
+.tag-suggestions div {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.tag-suggestions div:hover {
+    background: #444;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
