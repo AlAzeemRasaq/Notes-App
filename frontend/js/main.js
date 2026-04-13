@@ -1259,6 +1259,46 @@ document.getElementById("sortRecentBtn")?.addEventListener("click", () => {
     loadNotes(currentSearch);
 });
 
+// ===== TAG SUGGESTIONS =====
+const tagInput = document.getElementById("tagInput");
+const tagSuggestions = document.getElementById("tagSuggestions");
+
+let allTags = [];
+
+async function loadTags() {
+    allTags = await getTags();
+}
+
+tagInput?.addEventListener("input", () => {
+    const value = tagInput.value.toLowerCase();
+
+    if (!value) {
+        tagSuggestions.style.display = "none";
+        return;
+    }
+
+    const matches = allTags.filter(tag => tag.includes(value));
+
+    tagSuggestions.innerHTML = "";
+
+    matches.forEach(tag => {
+        const div = document.createElement("div");
+        div.textContent = tag;
+
+        div.onclick = () => {
+            tagInput.value = tag;
+            tagSuggestions.style.display = "none";
+        };
+
+        tagSuggestions.appendChild(div);
+    });
+
+    tagSuggestions.style.display = matches.length ? "block" : "none";
+});
+
+// call once on load
+loadTags();
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
