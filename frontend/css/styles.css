@@ -22,7 +22,13 @@ body {
     background: #171717;
     padding: 20px;
     height: 100vh;
-    transition: left 0.3s ease;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    overflow-y: auto; 
+    z-index: 1000; 
 }
 
 .sidebar h2 {
@@ -60,6 +66,7 @@ body {
 .main-container {
     flex: 1;
     padding: 20px;
+    margin-left: 220px;
 }
 
 /* ===== TOP BAR ===== */
@@ -84,8 +91,10 @@ body {
 }
 
 /* ===== BUTTONS & INPUTS ===== */
-input,
-textarea {
+.create-note input,
+.create-note textarea,
+.topbar input,
+#quickNoteInput {
     width: 100%;
     padding: 10px;
     border-radius: 8px;
@@ -93,6 +102,9 @@ textarea {
     background: #303134;
     color: white;
     margin-bottom: 10px;
+}
+input[type="text"] {
+    width: auto;
 }
 
 button {
@@ -173,8 +185,9 @@ button:hover {
 /* ===== NOTES GRID ===== */
 .notes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 22%, 300px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 15px;
+    align-items: start;
 }
 
 /* ===== NOTE CARD ===== */
@@ -371,7 +384,8 @@ body.light .sidebar {
     position: relative;
     width: 90%;
     max-width: 600px;
-    background: #fff;
+    background: #2a2a40;
+    color: #e8eaed;
     border-radius: 16px;
     padding: 20px;
 }
@@ -456,6 +470,36 @@ body.light .sidebar {
     font-weight: bold;
 }
 
+.controls-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+/* Make rows behave nicely */
+.quick-note-bar,
+.bulk-actions,
+.tag-controls,
+.sort-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Prevent stretching bugs */
+.tag-controls input,
+.quick-note-bar input {
+    width: auto;
+    min-width: 200px;
+}
+
+/* Ensure dropdown positioning stays correct */
+.tag-controls {
+    position: relative;
+}
+
 /* ===== SORT BUTTONS ===== */
 #sortRecentBtn.active {
     background: #4a90e2;
@@ -482,6 +526,10 @@ body.light .sidebar {
     background: #444;
 }
 
+.tag-controls {
+    position: relative;
+}
+
 /* ===== BULK TAG INPUT ===== */
 #bulkTagInput {
     margin-right: 10px;
@@ -493,6 +541,176 @@ body.light .sidebar {
     text-align: center;
     padding: 10px;
     opacity: 0.7;
+}
+
+#tagInput,
+#bulkTagInput {
+    width: 180px;
+    margin-bottom: 0;
+}
+
+#applyBulkTags,
+#sortRecentBtn {
+    width: auto;
+}
+
+/* ===== KEYBOARD SHORTCUTS PANEL ===== */
+.shortcuts-panel {
+    margin-top: 10px;
+    position: relative;
+}
+
+#toggleShortcuts {
+    cursor: pointer;
+}
+
+.shortcuts-list {
+    position: absolute;
+    top: 35px;
+    left: 0;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    padding: 12px;
+    border-radius: 8px;
+    width: 240px;
+    z-index: 999;
+}
+
+.shortcuts-list h4 {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.shortcuts-list ul {
+    list-style: none;
+    padding: 0;
+    font-size: 13px;
+}
+
+.shortcuts-list li {
+    margin-bottom: 6px;
+}
+
+kbd {
+    background: #444;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* ===== AUTH PAGE LAYOUT ===== */
+body.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #202124;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 380px;
+    background: #2a2a40;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+}
+
+.auth-container h2 {
+    margin-bottom: 10px;
+}
+
+.auth-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-container input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #303134;
+    color: white;
+    outline: none;
+}
+
+.auth-container input:focus {
+    outline: 2px solid #4f6bed;
+}
+
+.auth-container button {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #4f6bed;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.auth-container button:hover {
+    opacity: 0.85;
+}
+
+.auth-container a {
+    color: #8ab4f8;
+    text-decoration: none;
+}
+
+.auth-container a:hover {
+    text-decoration: underline;
+}
+
+.auth-container p {
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+#message {
+    font-size: 14px;
+    margin-top: 5px;
+    min-height: 18px;
+    color: #ff6b6b;
+}
+
+#message.success {
+    color: #4caf50;
+}
+
+/* ===== COLOR POPUP ===== */
+.color-popup {
+    position: absolute;
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    background: #2a2a40;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    z-index: 99999; /* 🔥 CRITICAL FIX */
+}
+
+.color-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s ease, border 0.2s ease;
+}
+
+.color-btn:hover {
+    transform: scale(1.2);
+    border: 2px solid white;
 }
 
 /* ===== MOBILE ===== */
@@ -514,12 +732,16 @@ body.light .sidebar {
 
     .sidebar {
         position: fixed;
-        left: -260px;
+        left: -220px;
         top: 0;
         width: 220px;
         height: 100%;
         z-index: 999;
         padding: 15px;
+    }
+
+    .sidebar.open {
+        left: 0;
     }
 
     .sidebar.active {
@@ -529,6 +751,7 @@ body.light .sidebar {
     .main-container {
         padding: 10px;
         margin-top: 50px;
+        margin-left: 0;
     }
 
     .topbar {
