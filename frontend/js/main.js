@@ -10,6 +10,15 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+// ===== SAFE PAGE DETECTION =====
+function isArchivePage() {
+    return document.body?.dataset?.page === "archive";
+}
+
+function isTrashPage() {
+    return document.body?.dataset?.page === "trash";
+}
+
 // ===== AUTOSAVE STATE =====
 let autosaveTimers = {};
 
@@ -39,9 +48,9 @@ const editHistory = {}; // { noteId: { undo: [], redo: [] } }
 // ===== UI STATES =====
 function showLoading() {
     const container = document.getElementById("notesContainer");
-    container.innerHTML = "";
+    container.replaceChildren();
 
-    const skeletonCount = 6; // tweak if you want
+    const skeletonCount = 1; // can be increased
 
     for (let i = 0; i < skeletonCount; i++) {
         const div = document.createElement("div");
@@ -110,38 +119,45 @@ function closeModal() {
 modalOverlay?.addEventListener("click", closeModal);
 modalCloseBtn?.addEventListener("click", closeModal);
 
-// ===== LOAD NOTES (OPTIMISED) =====
+// ===== LOAD NOTES =====
 async function loadNotes(search = "") {
+    console.log("LOAD NOTES:", window.location.href);
+
     const requestId = ++currentRequestId;
+
     currentPage = 1;
     hasMore = true;
 
     let notes = [];
 
-    // ⚡ 1. INSTANT CACHE LOAD (only normal page, no search)
-    if (!search && !window.isTrashPage) {
-        try {
-            const cached = JSON.parse(localStorage.getItem("notes_cache"));
+    // 🧹 RESET UI STATE WHEN SWITCHING PAGES
+    currentSearch = search || "";
+    currentTag = null;
+    selectedNotes.clear();
+    selectMode = false;
 
-            if (Array.isArray(cached) && cached.length > 0) {
-                allNotes = cached;
-                applyFilters(); // instant UI
-            } else {
-                showLoading();
-            }
-        } catch (err) {
-            console.warn("Cache read failed:", err);
-            showLoading();
-        }
-    } else {
+    // ===== SHOW LOADING ONLY WHEN NEEDED =====
+    if (!search && !isTrashPage() && !isArchivePage()) {
         showLoading();
     }
 
-    // 🔄 2. FETCH FRESH DATA (single clean call)
     try {
-        if (window.isTrashPage) {
-            notes = await getTrashNotes();
-        } else {
+        // ===== FETCH DATA BY PAGE TYPE =====
+        if (isTrashPage()) {
+            const data = await getTrashNotes();
+            allNotes = Array.isArray(data) ? data : (data?.notes || []);
+            applyFilters();
+            return;
+        }
+
+        if (isArchivePage()) {
+            const data = await getArchivedNotes();
+            allNotes = Array.isArray(data) ? data : (data?.notes || []);
+            applyFilters();
+            return;
+        }
+
+        else {
             notes = await getNotes(search || "");
         }
     } catch (err) {
@@ -150,32 +166,32 @@ async function loadNotes(search = "") {
         return;
     }
 
-    // 🛑 IGNORE outdated responses
+    // ===== IGNORE OLD REQUESTS =====
     if (requestId !== currentRequestId) return;
 
-    const isArchivePage = window.isArchivePage;
-
-    // 🔍 FILTERING (unchanged logic, safer guard)
-    if (!window.isTrashPage && Array.isArray(notes)) {
-        notes = notes.filter(n =>
-            isArchivePage ? n.archived : !n.archived
-        );
-
-        notes.sort((a, b) => {
-            if (a.pinned !== b.pinned) return b.pinned - a.pinned;
-
-            if (a.pinned && b.pinned) {
-                return (b.pin_order || 0) - (a.pin_order || 0);
-            }
-
-            return 0;
-        });
+    // ===== SAFETY CHECK =====
+    if (!Array.isArray(notes)) {
+        console.warn("Invalid notes response:", notes);
+        notes = [];
     }
+
+    // ===== SORT PINS FIRST =====
+    notes.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned - a.pinned;
+        if (a.pinned && b.pinned) return (b.pin_order || 0) - (a.pin_order || 0);
+        return 0;
+    });
 
     allNotes = notes;
 
-    // 💾 3. UPDATE CACHE (IMPORTANT FIX)
-    if (!search && !window.isTrashPage) {
+    // IMPORTANT: prevent overwrite bugs on special pages
+    if (isTrashPage() || isArchivePage()) {
+        applyFilters();
+        return;
+    }
+
+    // ===== CACHE ONLY FOR MAIN INDEX =====
+    if (!search && !isTrashPage() && !isArchivePage()) {
         try {
             localStorage.setItem("notes_cache", JSON.stringify(notes));
         } catch (err) {
@@ -183,32 +199,21 @@ async function loadNotes(search = "") {
         }
     }
 
-    // 🆕 EMPTY STATE
-    if (!notes.length) {
-        const message = window.isTrashPage
-            ? "Trash is empty"
-            : isArchivePage
-                ? "No archived notes"
-                : search
-                    ? "No notes match your search"
-                    : "No notes yet";
-
-        showEmpty(message);
-        return;
+    // ===== EMPTY STATE SAFETY =====
+    if (notes.length === 0) {
+        if (isTrashPage()) return showEmpty("Trash is empty 🗑️");
+        if (isArchivePage()) return showEmpty("No archived notes 📦");
+        return showEmpty("No notes found ✍️");
     }
 
-    // 🔄 4. SORTING (moved here for better UX)
-    notes = search
-    ? await getNotes(search)
-    : await getNotes();
 
-    if (sortMode === "recent") {
-        notes.sort((a, b) =>
-            new Date(b.updated_at) - new Date(a.updated_at)
-        );
-    }
-
-    // 🔄 FINAL RENDER
+    console.log("PAGE CHECK:", {
+        archive: isArchivePage(),
+        trash: isTrashPage(),
+        notes,
+        type: typeof notes,
+        isArray: Array.isArray(notes)
+    });
     applyFilters();
 }
 
@@ -231,20 +236,47 @@ function getPreviewText(html) {
     return temp.innerText;
 }
 
-// ===== 🔥 IMPROVED APPLY FILTERS (SEARCH + TAG + RANKING) =====
+// ===== APPLY FILTERS (SEARCH + TAG) =====
 function applyFilters() {
+    if (!Array.isArray(allNotes)) allNotes = [];
+
     const terms = currentSearch.split(/\s+/).filter(Boolean);
 
-    let filtered = allNotes.filter(note => {
+    let baseNotes = [...allNotes];
+
+    // PAGE FILTERS
+    if (isTrashPage()) {
+        baseNotes = [...allNotes];
+    } 
+    else if (isArchivePage()) {
+        baseNotes = [...allNotes];
+    } 
+    else if (!isTrashPage() && !isArchivePage()) {
+        baseNotes = baseNotes.filter(n => !n.archived && !n.trashed);
+    }
+
+    // ===== EMPTY STATE SAFETY =====
+    if (!baseNotes || baseNotes.length === 0) {
+        const container = document.getElementById("notesContainer");
+        if (container) container.replaceChildren();
+
+        if (isTrashPage()) return showEmpty("Trash is empty 🗑️");
+        if (isArchivePage()) return showEmpty("No archived notes 📦");
+        return showEmpty("No notes yet. Create one ✍️");
+    }
+
+    let filtered = baseNotes.filter(note => {
         const title = (note.title || "").toLowerCase();
         const content = (note.content || "").toLowerCase();
         const tags = (note.tags || []).map(t => t.toLowerCase());
 
-        const matchesSearch = terms.length === 0 || terms.every(term =>
-            title.includes(term) ||
-            content.includes(term) ||
-            tags.some(tag => tag.includes(term))
-        );
+        const matchesSearch =
+            terms.length === 0 ||
+            terms.every(term =>
+                title.includes(term) ||
+                content.includes(term) ||
+                tags.some(tag => tag.includes(term))
+            );
 
         const matchesTag = currentTag
             ? (note.tags || []).includes(currentTag)
@@ -253,24 +285,12 @@ function applyFilters() {
         return matchesSearch && matchesTag;
     });
 
-    // 🔥 EMPTY STATES
-    if (allNotes.length === 0) {
-        if (window.isTrashPage) {
-            showEmpty("Trash is empty 🗑️");
-        } else if (window.isArchivePage) {
-            showEmpty("No archived notes 📦");
-        } else {
-            showEmpty("No notes yet. Create one above ✍️");
-        }
-        return;
-    }
-
     if (filtered.length === 0) {
         showEmpty("No results found 🔍");
         return;
     }
 
-    // 🔥 Relevance sorting
+    // RELEVANCE SORT
     if (terms.length > 0) {
         filtered.sort((a, b) => {
             const score = (note) => {
@@ -300,11 +320,8 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
     const query = e.target.value.trim().toLowerCase();
     currentSearch = query;
 
-    // ⚡ Instant UI update (local filtering)
-    applyFilters();
-
-    // ⏳ Backend refresh (debounced)
     clearTimeout(searchTimeout);
+
     searchTimeout = setTimeout(() => {
         loadNotes(query);
     }, 300);
@@ -329,37 +346,69 @@ function setNoteColor(noteId, color) {
     updateNoteColor(noteId, color).catch(console.error);
 }
 
+// COLOR UPDATE (OPTIMISTIC UI)
 let activeColorPopup = null;
-
 function showColorPopup(noteId, btn) {
+    // Remove existing popup
     if (activeColorPopup) activeColorPopup.remove();
 
     const popup = document.createElement("div");
     popup.id = "colorPopup";
     popup.className = "color-popup";
 
+    // 🔥 Prevent popup clicks from bubbling to document
+    popup.addEventListener("click", (e) => e.stopPropagation());
+
     presetColors.forEach(c => {
         const colorBtn = document.createElement("div");
         colorBtn.className = "color-btn";
         colorBtn.style.backgroundColor = c;
+
         colorBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // ✅ critical
             setNoteColor(noteId, c);
+
+            // Clean up popup safely
             popup.remove();
+            activeColorPopup = null;
         });
+
         popup.appendChild(colorBtn);
     });
 
     document.body.appendChild(popup);
 
+    // ===== POSITIONING =====
     const rect = btn.getBoundingClientRect();
     let top = rect.bottom + window.scrollY + 5;
     let left = rect.left + window.scrollX;
 
-    const popupRect = popup.getBoundingClientRect();
+    document.body.appendChild(popup);
+
+    // allow layout to settle BEFORE measuring
+    requestAnimationFrame(() => {
+        const rect = btn.getBoundingClientRect();
+        const popupRect = popup.getBoundingClientRect();
+
+        let top = rect.bottom + window.scrollY + 5;
+        let left = rect.left + window.scrollX;
+
+        if (left + popupRect.width > window.innerWidth) {
+            left = window.innerWidth - popupRect.width - 10;
+        }
+
+        if (top + popupRect.height > window.innerHeight + window.scrollY) {
+            top = rect.top + window.scrollY - popupRect.height - 5;
+        }
+
+        popup.style.top = `${top}px`;
+        popup.style.left = `${left}px`;
+    });
+
     if (left + popupRect.width > window.innerWidth) {
         left = window.innerWidth - popupRect.width - 10;
     }
+
     if (top + popupRect.height > window.innerHeight + window.scrollY) {
         top = rect.top + window.scrollY - popupRect.height - 5;
     }
@@ -369,19 +418,23 @@ function showColorPopup(noteId, btn) {
 
     activeColorPopup = popup;
 
+    // ===== OUTSIDE CLICK HANDLER =====
     const removePopup = (e) => {
         if (!popup.contains(e.target) && e.target !== btn) {
             popup.remove();
             activeColorPopup = null;
+
             document.removeEventListener("click", removePopup);
             document.removeEventListener("touchstart", removePopup);
         }
     };
 
-    document.addEventListener("click", removePopup);
-    document.addEventListener("touchstart", removePopup);
+    // 🔥 Delay listener to avoid immediate trigger
+    setTimeout(() => {
+        document.addEventListener("click", removePopup);
+        document.addEventListener("touchstart", removePopup);
+    }, 0);
 }
-
 // ===== MODAL UPDATES =====
 function showModal(title, message, onConfirm, onCancel) {
     if (!modal) return;
@@ -439,25 +492,51 @@ function deleteNoteAnimated(noteDiv, noteId) {
 
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
-    const container = document.getElementById("notesContainer");
-    container.innerHTML = "";
+    if (!Array.isArray(notes)) notes = [];
 
-    const isArchivePage = window.isArchivePage;
-    const isTrashPage = window.isTrashPage;
+    const container = document.getElementById("notesContainer");
+    container.replaceChildren();
+
+    notes = notes.filter(Boolean);
 
     notes.forEach(note => {
         const div = document.createElement("div");
         div.className = "note";
         div.dataset.id = note._id;
-        div.draggable = !isTrashPage;
+        div.draggable = !isTrashPage();
 
-        // ===== DRAG EVENTS =====
-        div.addEventListener("dragstart", () => {
+        // ===== DRAG EVENTS (FIXED) =====
+        div.draggable = !isTrashPage();
+
+        div.addEventListener("dragstart", (e) => {
+            if (e.target.closest("button") || e.target.isContentEditable) {
+                e.preventDefault();
+                return;
+            }
+
             draggedNoteId = note._id;
+            div.classList.add("dragging");
         });
 
         div.addEventListener("dragend", () => {
             draggedNoteId = null;
+            div.classList.remove("dragging");
+        });
+
+        // ✅ ALLOW DROP
+        div.addEventListener("dragover", (e) => {
+            e.preventDefault();
+        });
+
+        // ✅ HANDLE DROP
+        div.addEventListener("drop", async (e) => {
+            e.preventDefault();
+
+            const targetId = note._id;
+
+            if (!draggedNoteId || draggedNoteId === targetId) return;
+
+            await reorderNotesAction(draggedNoteId, targetId);
         });
 
         // 🖌️ preserve note color
@@ -510,7 +589,7 @@ function renderNotes(notes) {
         actionsEl.className = "note-actions";
 
         // ================= TRASH MODE =================
-        if (isTrashPage) {
+        if (isTrashPage()) {
             const restoreBtn = document.createElement("button");
             restoreBtn.textContent = "♻️ Restore";
             restoreBtn.onclick = () => restoreNoteAction(note._id);
@@ -546,7 +625,7 @@ function renderNotes(notes) {
             pinBtn.onclick = () => togglePinAction(note._id);
 
             const archiveBtn = document.createElement("button");
-            archiveBtn.textContent = isArchivePage ? "↩️" : "📦";
+            archiveBtn.textContent = isArchivePage() ? "↩️" : "📦";
             archiveBtn.onclick = () => toggleArchiveAction(note._id);
 
             const colorBtn = document.createElement("button");
@@ -579,6 +658,10 @@ function renderNotes(notes) {
             redoBtn.textContent = "↪️";
             redoBtn.onclick = () => redoEdit(note._id);
 
+            actionsEl.addEventListener("mousedown", (e) => {
+                e.stopPropagation();
+            });
+
             actionsEl.append(
                 editBtn,
                 deleteBtn,
@@ -586,7 +669,7 @@ function renderNotes(notes) {
                 archiveBtn,
                 colorBtn,
                 duplicateBtn,
-                historyBtn, // 👈 added here
+                historyBtn,
                 undoBtn,
                 redoBtn
             );
@@ -764,12 +847,17 @@ async function editNote(id) {
 let editingNoteId = null;
 
 function enableInlineEdit(noteEl, note) {
-    if (editingNoteId && editingNoteId !== note._id) return; // only one edit at a time
+    if (editingNoteId && editingNoteId !== note._id) return;
     editingNoteId = note._id;
 
     const titleEl = noteEl.querySelector("h3");
     const contentEl = noteEl.querySelector(".note-content");
 
+    // ===== STORE ORIGINAL STATE (for safety) =====
+    const originalTitle = titleEl.textContent;
+    const originalContent = contentEl.innerHTML;
+
+    // ===== MAKE EDITABLE =====
     titleEl.contentEditable = true;
     contentEl.contentEditable = true;
 
@@ -777,14 +865,64 @@ function enableInlineEdit(noteEl, note) {
     contentEl.classList.add("editing");
 
     titleEl.focus();
+    titleEl.addEventListener("mousedown", (e) => e.stopPropagation());
+    contentEl.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    // After creating inputs/textarea inside enableInlineEdit()
-    titleInput?.addEventListener("input", () => triggerAutosave(noteElement));
-    textarea?.addEventListener("input", () => triggerAutosave(noteElement));
+    // ===== REMOVE OLD LISTENERS SAFELY =====
+    const save = async () => {
+        await saveInlineEdit(noteEl, note);
+    };
 
-    const saveHandler = () => saveInlineEdit(noteEl, note);
-    titleEl.addEventListener("blur", saveHandler, { once: true });
-    contentEl.addEventListener("blur", saveHandler, { once: true });
+    const autosave = () => triggerInlineAutosave(noteEl, note);
+
+    // Prevent duplicate bindings
+    titleEl.oninput = autosave;
+    contentEl.oninput = autosave;
+
+    titleEl.onblur = save;
+    contentEl.onblur = save;
+
+    // ===== ESC KEY SUPPORT INSIDE EDIT MODE =====
+    const escHandler = (e) => {
+        if (e.key === "Escape") {
+            titleEl.textContent = originalTitle;
+            contentEl.innerHTML = originalContent;
+
+            titleEl.contentEditable = false;
+            contentEl.contentEditable = false;
+
+            titleEl.classList.remove("editing");
+            contentEl.classList.remove("editing");
+
+            editingNoteId = null;
+
+            document.removeEventListener("keydown", escHandler);
+        }
+    };
+
+    document.addEventListener("keydown", escHandler);
+}
+
+// ===== INLINE AUTOSAVE (DEBOUNCED) =====
+function triggerInlineAutosave(noteElement, note) {
+    const noteId = note._id;
+
+    const titleEl = noteElement.querySelector("h3");
+    const contentEl = noteElement.querySelector(".note-content");
+
+    if (!noteId) return;
+
+    const updatedTitle = titleEl.textContent.trim();
+    const updatedContent = contentEl.innerHTML.trim();
+
+    showSavingIndicator(noteElement);
+
+    clearTimeout(autosaveTimers[noteId]);
+
+    autosaveTimers[noteId] = setTimeout(() => {
+        updateNote(noteId, updatedTitle, updatedContent, note.tags || [])
+            .catch(console.error);
+    }, 600);
 }
 
 async function saveInlineEdit(noteEl, note) {
@@ -792,17 +930,12 @@ async function saveInlineEdit(noteEl, note) {
     const contentEl = noteEl.querySelector(".note-content");
 
     const newTitle = titleEl.textContent.trim();
-    const newContent = contentEl.innerHTML.trim(); // ✅ keep HTML
+    const newContent = contentEl.innerHTML.trim();
 
     if (!newTitle && !newContent) {
         alert("Note cannot be empty!");
         return;
     }
-
-    if (!editHistory[note._id]) editHistory[note._id] = { undo: [], redo: [] };
-
-    editHistory[note._id].undo.push({ title: note.title, content: note.content });
-    editHistory[note._id].redo = [];
 
     try {
         await updateNote(note._id, newTitle, newContent, note.tags || []);
@@ -821,7 +954,7 @@ async function saveInlineEdit(noteEl, note) {
 
         editingNoteId = null;
 
-        applyFilters(); // re-render notes safely
+        applyFilters();
 
     } catch (err) {
         console.error("Inline update failed:", err);
@@ -860,10 +993,12 @@ document.addEventListener("click", (e) => {
     const activeNote = document.querySelector(".note.editing");
     if (!activeNote) return;
 
-    // If the click is INSIDE the note → do nothing
-    if (activeNote.contains(e.target)) return;
+    const clickedInsideNote = activeNote.contains(e.target);
+    const clickedPopup = e.target.closest(".color-popup");
+    const clickedButton = e.target.closest("button");
 
-    // Otherwise → close edit mode
+    if (clickedInsideNote || clickedPopup || clickedButton) return;
+
     closeEditMode(activeNote);
 });
 
@@ -872,21 +1007,19 @@ document.addEventListener("click", (e) => {
 function closeEditMode(noteElement) {
     noteElement.classList.remove("editing");
 
-    // OPTIONAL: trigger save when closing
-    const textarea = noteElement.querySelector("textarea");
-    const titleInput = noteElement.querySelector("input");
+    const titleEl = noteElement.querySelector("h3");
+    const contentEl = noteElement.querySelector(".note-content");
 
-    if (textarea || titleInput) {
-        const id = noteElement.dataset.id;
+    if (!titleEl || !contentEl) return;
 
-        const updatedData = {
-            title: titleInput ? titleInput.value : "",
-            content: textarea ? textarea.value : ""
-        };
+    const id = noteElement.dataset.id;
 
-        // Call your existing update function
-        updateNote(id, updatedData);
-    }
+    const updatedTitle = titleEl.textContent.trim();
+    const updatedContent = contentEl.innerHTML.trim();
+
+    // 🔥 FIX: correct updateNote signature (title, content, tags)
+    updateNote(id, updatedTitle, updatedContent, [])
+        .catch(console.error);
 }
 
 // ===== AUTOSAVE ON INPUT =====
@@ -896,21 +1029,19 @@ function triggerAutosave(noteElement) {
     const titleInput = noteElement.querySelector("input");
     const textarea = noteElement.querySelector("textarea");
 
-    if (!noteId || (!titleInput && !textarea)) return;
+    if (!noteId) return;
 
-    const updatedData = {
-        title: titleInput ? titleInput.value : "",
-        content: textarea ? textarea.value : ""
-    };
+    const updatedTitle = titleInput ? titleInput.value : "";
+    const updatedContent = textarea ? textarea.value : "";
 
-    // Show saving indicator
     showSavingIndicator(noteElement);
 
-    // Debounce per note
     clearTimeout(autosaveTimers[noteId]);
+
     autosaveTimers[noteId] = setTimeout(() => {
-        updateNote(noteId, updatedData);
-    }, 600); // tweak delay if needed
+        updateNote(noteId, updatedTitle, updatedContent, [])
+            .catch(console.error);
+    }, 600);
 }
 
 // ===== SAVING INDICATOR =====
@@ -943,8 +1074,7 @@ function showSavingIndicator(noteElement) {
 // ===== TRASH ACTIONS =====
 async function restoreNoteAction(id) {
     await restoreNote(id);
-    allNotes = allNotes.filter(n => n._id !== id);
-    applyFilters();
+    loadNotes(currentSearch);
 }
 
 async function permanentDeleteNoteAction(id) {
@@ -975,7 +1105,8 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
 
     const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => deleteNote(id)));
+
+    await bulkDelete(ids);
 
     allNotes = allNotes.filter(n => !selectedNotes.has(n._id));
 
@@ -988,8 +1119,9 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
 document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
 
-    const ids = Array.from(selectedNotes);
-    await Promise.all(ids.map(id => toggleArchive(id)));
+    const ids = Array.from(selectedNotes || []);
+    if (!ids.length) return;
+    await bulkArchive(ids);
 
     allNotes.forEach(n => {
         if (selectedNotes.has(n._id)) n.archived = !n.archived;
@@ -1054,20 +1186,12 @@ function showToast(message) {
 // ===== QUICK NOTE CREATE =====
 async function createQuickNote(content) {
     try {
-        const res = await fetch("/notes", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                title: content.substring(0, 20) || "Quick Note",
-                content: content
-            })
+        await apiRequest("/notes", "POST", {
+            title: content.substring(0, 20) || "Quick Note",
+            content
         });
 
-        if (!res.ok) throw new Error("Failed to create note");
-
-        loadNotes(); // refresh notes
+        loadNotes();
     } catch (err) {
         console.error(err);
         alert("Failed to create quick note");
@@ -1094,13 +1218,8 @@ if (quickNoteInput) {
 // ===== DUPLICATE NOTE =====
 async function duplicateNote(id) {
     try {
-        const res = await fetch(`/notes/duplicate/${id}`, {
-            method: "POST"
-        });
-
-        if (!res.ok) throw new Error("Failed to duplicate note");
-
-        loadNotes(); // refresh UI
+        await apiRequest(`/notes/duplicate/${id}`, "POST");
+        loadNotes(currentSearch);
     } catch (err) {
         console.error(err);
         alert("Failed to duplicate note");
@@ -1120,32 +1239,24 @@ if (archiveZone) {
         archiveZone.classList.remove("active");
     });
 
-    archiveZone.addEventListener("drop", async () => {
+    archiveZone.addEventListener("drop", async (e) => {
+        e.preventDefault();
+
         archiveZone.classList.remove("active");
 
         if (!draggedNoteId) return;
 
         await archiveNote(draggedNoteId);
         draggedNoteId = null;
+
+        loadNotes(); // ✅ single source of truth
     });
 }
 
 // ===== ARCHIVE NOTE (DRAG) =====
 async function archiveNote(id) {
     try {
-        const res = await fetch(`/notes/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                archived: true
-            })
-        });
-
-        if (!res.ok) throw new Error("Failed to archive note");
-
-        loadNotes();
+        await apiRequest(`/notes/archive/${id}`, "PUT");
     } catch (err) {
         console.error(err);
         alert("Failed to archive note");
@@ -1253,10 +1364,6 @@ const debouncedLoadNotes = debounce((value) => {
     loadNotes(value);
 }, 300);
 
-searchInput.addEventListener("input", (e) => {
-    debouncedLoadNotes(e.target.value);
-});
-
 // ===== SORTING =====
 document.getElementById("sortRecentBtn")?.addEventListener("click", () => {
     sortMode = sortMode === "recent" ? "default" : "recent";
@@ -1274,6 +1381,7 @@ let allTags = [];
 
 async function loadTags() {
     allTags = await getTags();
+    if (!Array.isArray(allTags)) allTags = [];
 }
 
 tagInput?.addEventListener("input", () => {
@@ -1330,23 +1438,29 @@ document.getElementById("applyBulkTags")?.addEventListener("click", async () => 
 
 // ===== INFINITE SCROLL =====
 async function loadMoreNotes() {
+    if (isArchivePage() || isTrashPage()) return;
     if (isLoadingMore || !hasMore) return;
 
     isLoadingMore = true;
 
-    const newNotes = await getNotesPaginated(currentPage + 1);
+    try {
+        const newNotes = await getNotesPaginated(currentPage + 1);
 
-    if (!newNotes.length) {
-        hasMore = false;
-        return;
+        if (!Array.isArray(newNotes) || newNotes.length === 0) {
+            hasMore = false;
+            return;
+        }
+
+        currentPage++;
+
+        allNotes = [...allNotes, ...newNotes];
+        applyFilters();
+
+    } catch (err) {
+        console.error("Pagination failed:", err);
+    } finally {
+        isLoadingMore = false;
     }
-
-    currentPage++;
-
-    allNotes = [...allNotes, ...newNotes];
-    applyFilters();
-
-    isLoadingMore = false;
 }
 
 window.addEventListener("scroll", () => {
@@ -1357,6 +1471,62 @@ window.addEventListener("scroll", () => {
     }
 });
 
+console.log("Before filter:", allNotes.length);
+console.log("After filter:", allNotes.length);
+
+// ===== SHORTCUTS TOGGLE =====
+const toggleShortcutsBtn = document.getElementById("toggleShortcuts");
+const shortcutsList = document.getElementById("shortcutsList");
+
+toggleShortcutsBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    shortcutsList.classList.toggle("hidden");
+});
+
+// close when clicking outside
+document.addEventListener("click", (e) => {
+    if (!shortcutsList) return;
+
+    if (!shortcutsList.contains(e.target) && e.target !== toggleShortcutsBtn) {
+        shortcutsList.classList.add("hidden");
+    }
+});
+
+// ===== MOBILE SIDEBAR TOGGLE =====
+document.addEventListener("DOMContentLoaded", () => {
+    const menuBtn = document.getElementById("mobileMenuBtn");
+    const sidebar = document.querySelector(".sidebar");
+
+    if (!menuBtn || !sidebar) return;
+
+    menuBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("active");
+    });
+});
+document.addEventListener("click", (e) => {
+    const sidebar = document.querySelector(".sidebar");
+    const menuBtn = document.getElementById("mobileMenuBtn");
+
+    if (!sidebar.classList.contains("active")) return;
+
+    const clickedInside = sidebar.contains(e.target);
+    const clickedButton = menuBtn.contains(e.target);
+
+    if (!clickedInside && !clickedButton) {
+        sidebar.classList.remove("active");
+    }
+});
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
+
+// ===== SAFETY NET RECOVERY =====
+window.addEventListener("load", () => {
+    setTimeout(() => {
+        if (!allNotes || !Array.isArray(allNotes)) {
+            console.warn("Recovery: forcing reload");
+            loadNotes();
+        }
+    }, 500);
+});
