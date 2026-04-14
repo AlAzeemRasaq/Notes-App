@@ -244,3 +244,13 @@ async function bulkUpdateTags(note_ids, tags) {
 async function getNotesPaginated(page = 1, limit = 20) {
     return await apiRequest(`/notes?page=${page}&limit=${limit}`);
 }
+
+// EMPTY TRASH
+async function emptyTrash() {
+    console.log("EMPTY TRASH CLICKED");
+
+    const res = await apiRequest("/notes/trash/empty", "DELETE");
+    console.log("RESULT:", res);
+
+    await loadNotes();
+}
