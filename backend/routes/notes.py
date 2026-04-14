@@ -28,12 +28,13 @@ def get_json_request():
     except:
         return {}
 
-def validate_note_input(data):
+def validate_note_input(data, allow_empty_update=True):
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
 
-    if not title and not content:
-        return "Note cannot be empty"
+    if not allow_empty_update:
+        if not title and not content:
+            return "Note cannot be empty"
 
     if len(title) > 120:
         return "Title too long"
@@ -51,7 +52,7 @@ def create_note():
     data = get_json_request()
     data["history"] = []
 
-    error = validate_note_input(data)
+    error = validate_note_input(data, allow_empty_update=False)
     if error:
         return jsonify({"message": error}), 400
 
@@ -170,35 +171,46 @@ def reorder_notes():
 @jwt_required()
 def get_trash_notes():
     user_id = str(get_jwt_identity())
-    notes = []
-    for note in mongo.db.notes.find({"user_id": user_id, "trashed": True},
-                                    sort=[("trashed_at",-1)]):
+
+    notes = list(mongo.db.notes.find({
+        "user_id": user_id,
+        "trashed": True
+    }).sort("trashed_at", -1))
+
+    for note in notes:
         note["_id"] = str(note["_id"])
-        notes.append(note)
+
     return jsonify(notes)
 
-# ================= UPDATE NOTE + HISTORY (FIXED) =================
+# ================= ARCHIVE =================
+@notes_bp.route("/archived", methods=["GET"])
+@jwt_required()
+def get_archived_notes():
+    user_id = str(get_jwt_identity())
+
+    notes = list(mongo.db.notes.find({
+        "user_id": user_id,
+        "archived": True,
+        "trashed": {"$ne": True}
+    }))
+
+    for note in notes:
+        note["_id"] = str(note["_id"])
+
+    return jsonify(notes)
+
+# ================= UPDATE NOTE + HISTORY =================
 @notes_bp.route("/<id>", methods=["PUT"])
 @jwt_required()
 def update_note(id):
     user_id = str(get_jwt_identity())
     data = get_json_request()
 
-    error = validate_note_input(data)
-    if error:
-        return jsonify({"message": error}), 400
+    # ✅ validate id FIRST (prevents crashes)
+    if not ObjectId.is_valid(id):
+        return jsonify({"message": "Invalid note id"}), 400
 
-    title = bleach.clean((data.get("title") or "").strip(), strip=True)
-    content = sanitize_html((data.get("content") or "").strip())
-    tags = data.get("tags")
-    if not isinstance(tags, list):
-        tags = []
-
-    color = (data.get("color") or "#ffffff").strip()
-    if not color.startswith("#") or len(color) not in [4,7]:
-        color = "#ffffff"
-
-    # 🟡 FETCH CURRENT NOTE FIRST (IMPORTANT FOR HISTORY)
+    # ================= FETCH CURRENT NOTE =================
     note = mongo.db.notes.find_one({
         "_id": ObjectId(id),
         "user_id": user_id,
@@ -208,7 +220,45 @@ def update_note(id):
     if not note:
         return jsonify({"message": "Note not found"}), 404
 
-    # 🟡 BUILD HISTORY ENTRY
+    # ================= VALIDATION (only if needed) =================
+    if "title" in data or "content" in data:
+        error = validate_note_input(data, allow_empty_update=True)
+        if error:
+            return jsonify({"message": error}), 400
+
+    # ================= BUILD UPDATE PAYLOAD =================
+    updated_fields = {}
+
+    # TITLE
+    if "title" in data:
+        title = data["title"]
+        if title is not None:
+            updated_fields["title"] = bleach.clean(title.strip(), strip=True)
+
+    # CONTENT
+    if "content" in data:
+        content = data["content"]
+        if content is not None:
+            updated_fields["content"] = sanitize_html(content.strip())
+
+    # TAGS
+    if "tags" in data:
+        if isinstance(data["tags"], list):
+            updated_fields["tags"] = data["tags"]
+
+    # COLOR
+    if "color" in data:
+        color = (data["color"] or "").strip()
+        if color.startswith("#") and len(color) in [4, 7]:
+            updated_fields["color"] = color
+        else:
+            updated_fields["color"] = note.get("color", "#ffffff")
+
+    # ================= PREVENT EMPTY UPDATE =================
+    if not updated_fields:
+        return jsonify({"message": "No valid fields to update"}), 400
+
+    # ================= HISTORY ENTRY =================
     history_entry = {
         "title": note.get("title"),
         "content": note.get("content"),
@@ -216,9 +266,8 @@ def update_note(id):
         "updated_at": note.get("updated_at", datetime.utcnow())
     }
 
-    # 🟡 PUSH TO HISTORY (keep last 10)
     mongo.db.notes.update_one(
-        {"_id": ObjectId(id)},
+        {"_id": ObjectId(id), "user_id": user_id},
         {
             "$push": {
                 "history": {
@@ -229,25 +278,18 @@ def update_note(id):
         }
     )
 
-    # 🟡 UPDATE NOTE
-    updated_fields = {
-        "title": title,
-        "content": content,
-        "tags": tags,
-        "color": color,
-        "updated_at": datetime.utcnow()
-    }
+    # ================= APPLY UPDATE =================
+    updated_fields["updated_at"] = datetime.utcnow()
 
     mongo.db.notes.update_one(
-        {"_id": ObjectId(id)},
+        {"_id": ObjectId(id), "user_id": user_id},
         {"$set": updated_fields}
     )
 
-    if not ObjectId.is_valid(id):
-        return jsonify({"message": "Invalid note id"}), 400
-
-    return jsonify({"message": "Note updated"})
-
+    return jsonify({
+        "message": "Note updated",
+        "updated_fields": list(updated_fields.keys())
+    }), 200
 
 # ================= HISTORY ENDPOINT =================
 @notes_bp.route("/history/<id>", methods=["GET"])
@@ -272,7 +314,12 @@ def delete_note(id):
     user_id = str(get_jwt_identity())
     result = mongo.db.notes.update_one(
         {"_id": ObjectId(id), "user_id": user_id},
-        {"$set": {"trashed": True, "trashed_at": datetime.utcnow()}}
+        {"$set": {
+            "trashed": True, 
+            "trashed_at": datetime.utcnow(),
+            "archived": False
+            }
+        }
     )
 
     if result.matched_count == 0:
@@ -292,7 +339,8 @@ def restore_note(id):
             {
                 "$set": {
                     "trashed": False,
-                    "trashed_at": None
+                    "trashed_at": None,
+                    "archived": False
                 }
             }
         )
