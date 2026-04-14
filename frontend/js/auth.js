@@ -1,6 +1,5 @@
-// =========================
+
 // REGISTER NEW USER
-// =========================
 async function register() {
   const username = document.getElementById("username").value.trim();
   const email = document.getElementById("email").value.trim();
@@ -30,9 +29,7 @@ async function register() {
   }
 }
 
-// =========================
 // LOGIN USER
-// =========================
 async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -48,13 +45,19 @@ async function login() {
       password
     });
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      alert("Login successful!");
-      window.location.href = "index.html";
-    } else {
-      alert(data.message || "Login failed");
+    console.log("[LOGIN RESPONSE]", data);
+
+    const token = data.access_token || data.token;
+
+    if (!token) {
+      alert(data.message || "Login failed (no token returned)");
+      return;
     }
+
+    localStorage.setItem("token", token);
+
+    alert("Login successful!");
+    window.location.href = "index.html";
 
   } catch (err) {
     console.error("[LOGIN ERROR]", err);
@@ -62,18 +65,14 @@ async function login() {
   }
 }
 
-// =========================
 // LOGOUT
-// =========================
 function logout() {
   localStorage.removeItem("token");
   alert("Logged out successfully");
   window.location.href = "login.html";
 }
 
-// =========================
 // AUTH UI HANDLER
-// =========================
 function updateAuthUI() {
   const loginBtn = document.getElementById("loginBtn");
   const registerBtn = document.getElementById("registerBtn");
