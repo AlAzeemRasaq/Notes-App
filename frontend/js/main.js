@@ -1517,6 +1517,14 @@ document.addEventListener("click", (e) => {
     }
 });
 
+// ===== EMPTY TRASH =====
+async function emptyTrash() {
+    if (!confirm("This will permanently delete ALL trashed notes. Continue?")) return;
+
+    await apiRequest("/notes/trash/empty", "DELETE");
+    await loadNotes();
+}
+
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
