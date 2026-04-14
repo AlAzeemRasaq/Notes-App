@@ -713,6 +713,15 @@ body.auth-page {
     border: 2px solid white;
 }
 
+.note-content,
+.note-content * {
+    color: #000000;
+}
+
+.note h3 {
+    color: #000000;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
