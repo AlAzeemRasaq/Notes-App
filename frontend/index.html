@@ -11,27 +11,6 @@
 
 <body>
 
-<!-- 🆕 NOTE EXPANSION MODAL -->
-<div id="noteModal" class="modal hidden">
-
-    <!-- Overlay (click to close) -->
-    <div class="modal-overlay" id="modalOverlay"></div>
-
-    <!-- Modal Content -->
-    <div class="modal-content">
-
-        <!-- Close Button -->
-        <button id="closeModalBtn" class="close-btn">&times;</button>
-
-        <!-- Editable Title -->
-        <input id="modalTitle" class="modal-title" placeholder="Note title">
-
-        <!-- Editable Content -->
-        <div id="modalContent" class="modal-editor" contenteditable="true"></div>
-
-    </div>
-</div>
-
     <!-- Sidebar -->
     <aside class="sidebar">
         <h2>Notes</h2>
@@ -44,15 +23,6 @@
 
     <!-- ☰ MOBILE MENU BUTTON -->
     <button id="mobileMenuBtn" class="mobile-menu-btn">☰</button>
-
-    <!-- ⚡ QUICK NOTE BAR -->
-    <div class="quick-note-bar">
-        <input 
-            type="text" 
-            id="quickNoteInput" 
-            placeholder="Write a quick note and press Enter..."
-        />
-    </div>
 
     <!-- Main Content -->
     <div class="main-container">
@@ -111,15 +81,56 @@
             </small>
         </div>
 
-        <!-- 🔥 SELECT MODE BUTTON -->
-        <div class="bulk-actions">
-            <button id="selectModeBtn">Select</button>
+        <!-- ⚡ CONTROLS BAR (NEW STRUCTURE) -->
+        <div class="controls-bar">
 
-            <div id="bulkOptions" style="display:none; margin-top:10px;">
-                <input type="checkbox" id="selectAllNotes"> Select All
-                <button id="bulkDelete">Delete Selected</button>
-                <button id="bulkArchive">Archive Selected</button>
-                <button id="cancelSelectBtn">Cancel</button>
+            <!-- ⚡ QUICK NOTE BAR -->
+            <div class="quick-note-bar">
+                <input 
+                    type="text" 
+                    id="quickNoteInput" 
+                    placeholder="Write a quick note and press Enter..."
+                />
+            </div>
+
+            <!-- 🔥 SELECT MODE BUTTON -->
+            <div class="bulk-actions">
+                <button id="selectModeBtn">Select</button>
+
+                <div id="bulkOptions" style="display:none; margin-top:10px;">
+                    <input type="checkbox" id="selectAllNotes"> Select All
+                    <button id="bulkDelete">Delete Selected</button>
+                    <button id="bulkArchive">Archive Selected</button>
+                    <button id="cancelSelectBtn">Cancel</button>
+                </div>
+            </div>
+
+            <div class="tag-controls">
+                <input type="text" id="tagInput" placeholder="Add tag..." />
+                <div id="tagSuggestions" class="tag-suggestions"></div>
+
+                <input type="text" id="bulkTagInput" placeholder="Set tags for selected..." />
+                <button id="applyBulkTags">Apply Tags</button>
+
+                <button id="sortRecentBtn">Recently Edited</button>
+            </div>
+
+            <!-- ⌨️ KEYBOARD SHORTCUTS PANEL -->
+            <div class="shortcuts-panel">
+                <button id="toggleShortcuts">⌨️ Shortcuts</button>
+
+                <div id="shortcutsList" class="shortcuts-list hidden">
+                    <h4>Keyboard Shortcuts</h4>
+
+                    <ul>
+                        <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> → Create note</li>
+                        <li><kbd>Ctrl</kbd> + <kbd>K</kbd> → Focus search</li>
+                        <li><kbd>Ctrl</kbd> + <kbd>A</kbd> → Toggle select mode</li>
+                        <li><kbd>Delete</kbd> → Delete selected notes</li>
+                        <li><kbd>Ctrl</kbd> + <kbd>D</kbd> → Duplicate selected note</li>
+                        <li><kbd>Esc</kbd> → Exit edit / selection</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -205,6 +216,21 @@
         });
     </script>
 
+    <!-- 🆕 NOTE EXPANSION MODAL -->
+    <div id="noteModal" class="modal hidden">
+        <!-- Overlay (click to close) -->
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <!-- Modal Content -->
+        <div class="modal-content">
+            <!-- Close Button -->
+            <button id="closeModalBtn" class="close-btn">&times;</button>
+            <!-- Editable Title -->
+            <input id="modalTitle" class="modal-title" placeholder="Note title">
+            <!-- Editable Content -->
+            <div id="modalContent" class="modal-editor" contenteditable="true"></div>
+        </div>
+    </div>
+
     <div id="toastContainer">
         <div id="undoToast" class="undo-toast">
             <span>Note deleted</span>
@@ -219,13 +245,5 @@
             <button onclick="closeHistory()">Close</button>
         </div>
     </div>
-
-    <input type="text" id="tagInput" placeholder="Add tag..." />
-    <div id="tagSuggestions" class="tag-suggestions"></div>
-
-    <input type="text" id="bulkTagInput" placeholder="Set tags for selected..." />
-    <button id="applyBulkTags">Apply Tags</button>
-
-    <button id="sortRecentBtn">Recently Edited</button>
 </body>
 </html>
