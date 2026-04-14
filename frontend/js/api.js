@@ -31,6 +31,9 @@ function getCache() {
 function invalidateCache() {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_TIMESTAMP_KEY);
+
+    localStorage.removeItem("archive_cache");
+    localStorage.removeItem("trash_cache");
 }
 
 // AUTH HEADERS
@@ -41,8 +44,12 @@ function getAuthHeaders() {
     return headers;
 }
 
-// GENERIC API REQUEST
+// ===== GENERIC API REQUEST (IMPROVED) =====
 async function apiRequest(endpoint, method = "GET", body = null) {
+    const url = `${API_BASE}${endpoint}`;
+
+    console.log("API REQUEST:", method, url);
+
     const options = {
         method,
         headers: getAuthHeaders()
@@ -52,20 +59,44 @@ async function apiRequest(endpoint, method = "GET", body = null) {
         options.body = JSON.stringify(body);
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, options);
+    let res;
 
-    if (!res.ok) {
-        const text = await res.text();
+    try {
+        res = await fetch(url, options);
+    } catch (err) {
+        console.error("❌ Network error:", err);
+        throw new Error("Network error - check backend/server");
+    }
 
-        if (res.status === 401 || res.status === 422) {
-            localStorage.removeItem("token");
+    console.log("STATUS:", res.status);
+
+    // ===== HANDLE AUTH =====
+    if (res.status === 401) {
+        console.warn("⚠️ Unauthorized - redirecting to login");
+
+        localStorage.removeItem("token");
+
+        if (!window.location.pathname.includes("login")) {
             window.location.href = "login.html";
         }
 
+        throw new Error("Unauthorized");
+    }
+
+    // ===== HANDLE OTHER ERRORS =====
+    if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ API error:", text);
         throw new Error(text || `API error ${res.status}`);
     }
 
-    return res.status !== 204 ? await res.json() : null;
+    // ===== SAFE JSON PARSE =====
+    try {
+        return res.status !== 204 ? await res.json() : null;
+    } catch (err) {
+        console.error("❌ JSON parse error:", err);
+        throw new Error("Invalid JSON response");
+    }
 }
 
 // NOTES API
@@ -86,13 +117,13 @@ async function getNotes(search = "") {
     return data;
 }
 
-export async function createNote(title, content, tags = []) {
+async function createNote(title, content, tags = []) {
     const res = await apiRequest("/notes", "POST", { title, content, tags });
     invalidateCache();
     return res;
 }
 
-export async function updateNote(id, title, content, tags = []) {
+async function updateNote(id, title, content, tags = []) {
     const res = await apiRequest(`/notes/${id}`, "PUT", {
         title,
         content,
@@ -103,32 +134,32 @@ export async function updateNote(id, title, content, tags = []) {
     return res;
 }
 
-export async function deleteNote(id) {
+async function deleteNote(id) {
     const res = await apiRequest(`/notes/${id}`, "DELETE");
     invalidateCache();
     return res;
 }
 
-export async function togglePin(id) {
+async function togglePin(id) {
     const res = await apiRequest(`/notes/pin/${id}`, "PUT");
     invalidateCache();
     return res;
 }
 
-export async function toggleArchive(id) {
+async function toggleArchive(id) {
     const res = await apiRequest(`/notes/archive/${id}`, "PUT");
     invalidateCache();
     return res;
 }
 
-export async function reorderNotes(ordered_ids) {
+async function reorderNotes(ordered_ids) {
     const res = await apiRequest("/notes/reorder", "PUT", { ordered_ids });
     invalidateCache();
     return res;
 }
 
 // COLOR UPDATE (SAFE VERSION)
-export async function updateNoteColor(id, color) {
+async function updateNoteColor(id, color) {
     // backend expects full update payload
     const res = await apiRequest(`/notes/${id}`, "PUT", {
         color
@@ -138,31 +169,46 @@ export async function updateNoteColor(id, color) {
     return res;
 }
 
-// TRASH + RESTORE
-export async function getTrashNotes() {
-    return await apiRequest("/notes/trash");
+// ARCHIVED NOTES
+async function getArchivedNotes() {
+    const cached = localStorage.getItem("archive_cache");
+    if (cached) return JSON.parse(cached);
+
+    const data = await apiRequest("/notes/archived");
+    localStorage.setItem("archive_cache", JSON.stringify(data));
+    return data;
 }
 
-export async function restoreNote(id) {
+// TRASH + RESTORE
+async function getTrashNotes() {
+    const cached = localStorage.getItem("trash_cache");
+    if (cached) return JSON.parse(cached);
+
+    const data = await apiRequest("/notes/trash");
+    localStorage.setItem("trash_cache", JSON.stringify(data));
+    return data;
+}
+
+async function restoreNote(id) {
     const res = await apiRequest(`/notes/restore/${id}`, "PUT");
     invalidateCache();
     return res;
 }
 
-export async function deleteNotePermanently(id) {
+async function deleteNotePermanently(id) {
     const res = await apiRequest(`/notes/permanent/${id}`, "DELETE");
     invalidateCache();
     return res;
 }
 
 // BULK ACTIONS
-export async function bulkDelete(note_ids) {
+async function bulkDelete(note_ids) {
     const res = await apiRequest("/notes/bulk-delete", "POST", { note_ids });
     invalidateCache();
     return res;
 }
 
-export async function bulkArchive(note_ids) {
+async function bulkArchive(note_ids) {
     const res = await apiRequest("/notes/bulk-archive", "POST", { note_ids });
     invalidateCache();
     return res;
@@ -179,12 +225,12 @@ async function searchNotes(query) {
 }
 
 // TAGS API
-export async function getTags() {
+async function getTags() {
     return await apiRequest("/notes/tags");
 }
 
 // BULK UPDATE TAGS
-export async function bulkUpdateTags(note_ids, tags) {
+async function bulkUpdateTags(note_ids, tags) {
     const res = await apiRequest("/notes/bulk-tags", "POST", {
         note_ids,
         tags
@@ -195,6 +241,6 @@ export async function bulkUpdateTags(note_ids, tags) {
 }
 
 // NOTE PAGINATION
-export async function getNotesPaginated(page = 1, limit = 20) {
+async function getNotesPaginated(page = 1, limit = 20) {
     return await apiRequest(`/notes?page=${page}&limit=${limit}`);
 }
