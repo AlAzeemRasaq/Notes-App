@@ -529,16 +529,3 @@ def bulk_update_tags():
     )
 
     return jsonify({"message": "Tags updated"}), 200
-
-# ================= EMPTY TRASH =================
-@notes_bp.route("/trash/empty", methods=["DELETE"])
-@jwt_required()
-def empty_trash():
-    user_id = str(get_jwt_identity())
-
-    db.notes.delete_many({
-        "user_id": user_id,
-        "trashed": True
-    })
-
-    return jsonify({"message": "Trash emptied"}), 200
