@@ -50,7 +50,7 @@ function showLoading() {
     const container = document.getElementById("notesContainer");
     container.replaceChildren();
 
-    const skeletonCount = 1; // can be increased
+    const skeletonCount = 10; // can be increased
 
     for (let i = 0; i < skeletonCount; i++) {
         const div = document.createElement("div");
@@ -1516,14 +1516,6 @@ document.addEventListener("click", (e) => {
         sidebar.classList.remove("active");
     }
 });
-
-// ===== EMPTY TRASH =====
-async function emptyTrash() {
-    if (!confirm("This will permanently delete ALL trashed notes. Continue?")) return;
-
-    await apiRequest("/notes/trash/empty", "DELETE");
-    await loadNotes();
-}
 
 // ===== INIT =====
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
