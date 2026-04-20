@@ -41,6 +41,7 @@ async function loadNotes(search = "") {
         }
     } catch (err) {
         console.error("Failed to load notes:", err);
+        showToast(err.message, "error");
         showEmpty("Failed to load notes ❌");
         return;
     }
