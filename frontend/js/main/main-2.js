@@ -305,24 +305,36 @@ function applyFilters() {
         return showEmpty("No notes yet. Create one ✍️");
     }
 
+   // ===== ADVANCED FILTERING =====
+    const filters = parseSearch(currentSearch);
+
     let filtered = baseNotes.filter(note => {
         const title = (note.title || "").toLowerCase();
         const content = (note.content || "").toLowerCase();
         const tags = (note.tags || []).map(t => t.toLowerCase());
 
-        const matchesSearch =
-            terms.length === 0 ||
-            terms.every(term =>
+        // 🔤 TEXT SEARCH
+        const matchesText =
+            filters.text.length === 0 ||
+            filters.text.every(term =>
                 title.includes(term) ||
                 content.includes(term) ||
                 tags.some(tag => tag.includes(term))
             );
 
-        const matchesTag = currentTag
-            ? (note.tags || []).includes(currentTag)
-            : true;
+        // 🏷️ TAG FILTER
+        const matchesTag =
+            !filters.tag || tags.includes(filters.tag);
 
-        return matchesSearch && matchesTag;
+        // 📌 PIN FILTER
+        const matchesPinned =
+            filters.pinned === null || note.pinned === filters.pinned;
+
+        // 📦 ARCHIVE FILTER
+        const matchesArchived =
+            filters.archived === null || note.archived === filters.archived;
+
+        return matchesText && matchesTag && matchesPinned && matchesArchived;
     });
 
     if (filtered.length === 0) {
