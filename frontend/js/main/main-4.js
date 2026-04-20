@@ -211,7 +211,7 @@ async function createNoteAction() {
         applyFilters();
     } catch (err) {
         console.error("Failed to create note:", err);
-        alert("Failed to create note. See console for details.");
+        showToast(err.message, "error");
     }
 }
 
