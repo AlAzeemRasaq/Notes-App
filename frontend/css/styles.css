@@ -722,6 +722,43 @@ body.auth-page {
     color: #000000;
 }
 
+/* ===== TOAST NOTIFICATIONS ===== */
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    animation: slideIn 0.2s ease;
+}
+
+.toast-success { background: #2ecc71; }
+.toast-error { background: #e74c3c; }
+.toast-warning { background: #f39c12; }
+.toast-info { background: #3498db; }
+
+.toast-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 1024px) {
     .notes-grid {
