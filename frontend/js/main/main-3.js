@@ -147,7 +147,9 @@ tagInput?.addEventListener("input", () => {
 });
 
 // call once on load
-loadTags();
+document.addEventListener("DOMContentLoaded", () => {
+    loadTags();
+});
 
 // ===== INFINITE SCROLL =====
 async function loadMoreNotes() {
@@ -179,3 +181,33 @@ async function loadMoreNotes() {
 const debouncedLoadNotes = debounce((value) => {
     loadNotes(value);
 }, 300);
+
+// ===== COLLABORATION SYNC =====
+
+// Track last sync time (basic version)
+let lastSyncTime = Date.now();
+
+// 🔁 Auto-refresh every 15s (lightweight sync)
+setInterval(() => {
+    // Don't spam while typing/editing
+    if (document.querySelector(".note.editing")) return;
+
+    console.log("Auto-sync: refreshing notes...");
+    loadNotes(currentSearch);
+}, 15000);
+
+
+// 👁️ Refresh when user returns to tab (BEST UX)
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        console.log("Tab active → syncing notes");
+        loadNotes(currentSearch);
+    }
+});
+
+
+// 🖱️ Optional: sync when window regains focus (extra safety)
+window.addEventListener("focus", () => {
+    console.log("Window focused → syncing notes");
+    loadNotes(currentSearch);
+});
