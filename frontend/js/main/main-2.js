@@ -26,7 +26,10 @@ function showEmpty(message = "No notes yet") {
 }
 
 // ===== MODAL HANDLING =====
-const modal = document.getElementById("modal");
+let modal;
+document.addEventListener("DOMContentLoaded", () => {
+    modal = document.getElementById("modal");
+});
 const modalOverlay = modal?.querySelector(".modal-overlay");
 const modalCloseBtn = modal?.querySelector(".close-btn");
 
@@ -70,9 +73,20 @@ function showModal(title, message, onConfirm, onCancel) {
     modal.classList.add("active");
 }
 
+let lastRenderedIds = [];
+
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
     if (!Array.isArray(notes)) notes = [];
+
+    const ids = notes.map(n => n._id);
+
+    // 🚀 skip re-render if same data
+    if (JSON.stringify(ids) === JSON.stringify(lastRenderedIds)) {
+        return;
+    }
+
+    lastRenderedIds = ids;
 
     const container = document.getElementById("notesContainer");
     container.replaceChildren();
@@ -272,8 +286,10 @@ function renderNotes(notes) {
 
         if (note.pinned) div.classList.add("pinned");
 
-        container.appendChild(div);
+        fragment.appendChild(div);
     });
+    
+    container.appendChild(fragment);
 }
 
 // ===== APPLY FILTERS (SEARCH + TAG) =====
@@ -281,6 +297,7 @@ function applyFilters() {
     if (!Array.isArray(allNotes)) allNotes = [];
 
     const terms = currentSearch.split(/\s+/).filter(Boolean);
+    const debouncedRender = debounce(renderNotes, 50);
 
     let baseNotes = [...allNotes];
 
@@ -305,7 +322,7 @@ function applyFilters() {
         return showEmpty("No notes yet. Create one ✍️");
     }
 
-   // ===== ADVANCED FILTERING =====
+    // ===== ADVANCED FILTERING =====
     const filters = parseSearch(currentSearch);
 
     let filtered = baseNotes.filter(note => {
@@ -364,7 +381,7 @@ function applyFilters() {
         });
     }
 
-    renderNotes(filtered);
+    debouncedRender(filtered);
 }
 
 // ===== SAVING INDICATOR =====
