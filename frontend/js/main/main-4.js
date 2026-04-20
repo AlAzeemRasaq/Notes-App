@@ -123,6 +123,7 @@ function deleteNoteAnimated(noteDiv, noteId) {
 
         // 🗑️ Backend delete
         await deleteNote(noteId);
+        showToast("Note deleted", "success");
 
         // 🔥 Show undo toast
         showUndoToast();
