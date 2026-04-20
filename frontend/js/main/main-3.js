@@ -1,27 +1,20 @@
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
-    console.log("LOAD NOTES:", window.location.href);
-
     const requestId = ++currentRequestId;
 
     currentPage = 1;
     hasMore = true;
 
-    let notes = [];
-
-    // 🧹 RESET UI STATE WHEN SWITCHING PAGES
     currentSearch = search || "";
     currentTag = null;
     selectedNotes.clear();
     selectMode = false;
 
-    // ===== SHOW LOADING ONLY WHEN NEEDED =====
     if (!search && !isTrashPage() && !isArchivePage()) {
         showLoading();
     }
 
     try {
-        // ===== FETCH DATA BY PAGE TYPE =====
         if (isTrashPage()) {
             const data = await getTrashNotes();
             allNotes = Array.isArray(data) ? data : (data?.notes || []);
@@ -36,9 +29,15 @@ async function loadNotes(search = "") {
             return;
         }
 
-        else {
-            notes = await getNotes(search || "");
+        const response = await getNotes(search || "");
+
+        // normalize early (avoid later checks)
+        if (Array.isArray(response)) {
+            allNotes = response;
+        } else {
+            allNotes = response?.notes || [];
         }
+
     } catch (err) {
         console.error("Failed to load notes:", err);
         showToast(err.message, "error");
@@ -46,60 +45,43 @@ async function loadNotes(search = "") {
         return;
     }
 
-    // ===== IGNORE OLD REQUESTS =====
+    // IGNORE OLD REQUESTS
     if (requestId !== currentRequestId) return;
 
-    // ===== SAFETY CHECK =====
-    if (!Array.isArray(notes)) {
-        console.warn("Invalid notes response:", notes);
-        notes = [];
-    }
+    if (!Array.isArray(allNotes)) allNotes = [];
 
     // ===== SORT PINS FIRST =====
-    notes.sort((a, b) => {
+    allNotes.sort((a, b) => {
         if (a.pinned !== b.pinned) return b.pinned - a.pinned;
         if (a.pinned && b.pinned) return (b.pin_order || 0) - (a.pin_order || 0);
         return 0;
     });
 
-    allNotes = notes;
-
-    // IMPORTANT: prevent overwrite bugs on special pages
-    if (isTrashPage() || isArchivePage()) {
-        applyFilters();
-        return;
-    }
-
-    // ===== CACHE ONLY FOR MAIN INDEX =====
+    // ===== CACHE ONLY MAIN PAGE =====
     if (!search && !isTrashPage() && !isArchivePage()) {
         try {
-            localStorage.setItem("notes_cache", JSON.stringify(notes));
+            localStorage.setItem("notes_cache", JSON.stringify(allNotes));
         } catch (err) {
             console.warn("Cache write failed:", err);
         }
     }
 
-    // ===== EMPTY STATE SAFETY =====
-    if (notes.length === 0) {
+    if (allNotes.length === 0) {
         if (isTrashPage()) return showEmpty("Trash is empty 🗑️");
         if (isArchivePage()) return showEmpty("No archived notes 📦");
         return showEmpty("No notes found ✍️");
     }
 
-
-    console.log("PAGE CHECK:", {
-        archive: isArchivePage(),
-        trash: isTrashPage(),
-        notes,
-        type: typeof notes,
-        isArray: Array.isArray(notes)
-    });
     applyFilters();
 }
 
-// ===== SEARCH (HYBRID: BACKEND + INSTANT UI) =====
-document.getElementById("searchInput")?.addEventListener("input", (e) => {
+
+// ===== SEARCH INPUT (OPTIMIZED) =====
+const searchInput = document.getElementById("searchInput");
+
+searchInput?.addEventListener("input", (e) => {
     const query = e.target.value.trim().toLowerCase();
+
     currentSearch = query;
 
     clearTimeout(searchTimeout);
@@ -109,7 +91,8 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
     }, 300);
 });
 
-// ===== ADVANCED SEARCH PARSER =====
+
+// ===== SEARCH PARSER (OPTIMIZED LOOP) =====
 function parseSearch(query) {
     const filters = {
         text: [],
@@ -118,41 +101,49 @@ function parseSearch(query) {
         archived: null
     };
 
-    query.split(/\s+/).forEach(term => {
-        if (!term) return;
+    const parts = query.split(/\s+/);
+
+    for (let i = 0; i < parts.length; i++) {
+        const term = parts[i];
+        if (!term) continue;
 
         if (term.startsWith("tag:")) {
-            filters.tag = term.replace("tag:", "").toLowerCase();
-        } 
+            filters.tag = term.slice(4).toLowerCase();
+        }
         else if (term === "pinned:true") {
             filters.pinned = true;
-        } 
+        }
         else if (term === "pinned:false") {
             filters.pinned = false;
-        } 
+        }
         else if (term === "archived:true") {
             filters.archived = true;
-        } 
+        }
         else if (term === "archived:false") {
             filters.archived = false;
-        } 
+        }
         else {
             filters.text.push(term.toLowerCase());
         }
-    });
+    }
 
     return filters;
 }
 
-// ===== TAG SUGGESTIONS =====
+
+// ===== TAG SYSTEM =====
 const tagInput = document.getElementById("tagInput");
 const tagSuggestions = document.getElementById("tagSuggestions");
 
 let allTags = [];
 
 async function loadTags() {
-    allTags = await getTags();
-    if (!Array.isArray(allTags)) allTags = [];
+    try {
+        const data = await getTags();
+        allTags = Array.isArray(data) ? data : [];
+    } catch {
+        allTags = [];
+    }
 }
 
 tagInput?.addEventListener("input", () => {
@@ -167,7 +158,11 @@ tagInput?.addEventListener("input", () => {
 
     tagSuggestions.innerHTML = "";
 
-    matches.forEach(tag => {
+    const fragment = document.createDocumentFragment();
+
+    for (let i = 0; i < matches.length; i++) {
+        const tag = matches[i];
+
         const div = document.createElement("div");
         div.textContent = tag;
 
@@ -176,18 +171,17 @@ tagInput?.addEventListener("input", () => {
             tagSuggestions.style.display = "none";
         };
 
-        tagSuggestions.appendChild(div);
-    });
+        fragment.appendChild(div);
+    }
 
+    tagSuggestions.appendChild(fragment);
     tagSuggestions.style.display = matches.length ? "block" : "none";
 });
 
-// call once on load
-document.addEventListener("DOMContentLoaded", () => {
-    loadTags();
-});
+document.addEventListener("DOMContentLoaded", loadTags);
 
-// ===== INFINITE SCROLL =====
+
+// ===== INFINITE SCROLL (SAFE GUARD + LESS WORK) =====
 async function loadMoreNotes() {
     if (isArchivePage() || isTrashPage()) return;
     if (isLoadingMore || !hasMore) return;
@@ -204,7 +198,8 @@ async function loadMoreNotes() {
 
         currentPage++;
 
-        allNotes = [...allNotes, ...newNotes];
+        allNotes = allNotes.concat(newNotes);
+
         applyFilters();
 
     } catch (err) {
@@ -214,36 +209,47 @@ async function loadMoreNotes() {
     }
 }
 
-const debouncedLoadNotes = debounce((value) => {
-    loadNotes(value);
-}, 300);
 
-// ===== COLLABORATION SYNC =====
+// ===== DEBOUNCED VERSION =====
+const debouncedLoadNotes = debounce(loadNotes, 300);
 
-// Track last sync time (basic version)
-let lastSyncTime = Date.now();
 
-// 🔁 Auto-refresh every 15s (lightweight sync)
+// ===== AUTO SYNC (OPTIMIZED) =====
+let syncBlocked = false;
+
 setInterval(() => {
-    // Don't spam while typing/editing
+    if (syncBlocked) return;
     if (document.querySelector(".note.editing")) return;
 
-    console.log("Auto-sync: refreshing notes...");
-    loadNotes(currentSearch);
+    syncBlocked = true;
+
+    loadNotes(currentSearch).finally(() => {
+        setTimeout(() => {
+            syncBlocked = false;
+        }, 2000);
+    });
 }, 15000);
 
 
-// 👁️ Refresh when user returns to tab (BEST UX)
+// ===== VISIBILITY + FOCUS SYNC (DEDUPED) =====
+let focusLock = false;
+
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-        console.log("Tab active → syncing notes");
-        loadNotes(currentSearch);
+        if (focusLock) return;
+        focusLock = true;
+
+        loadNotes(currentSearch).finally(() => {
+            setTimeout(() => focusLock = false, 2000);
+        });
     }
 });
 
-
-// 🖱️ Optional: sync when window regains focus (extra safety)
 window.addEventListener("focus", () => {
-    console.log("Window focused → syncing notes");
-    loadNotes(currentSearch);
+    if (focusLock) return;
+    focusLock = true;
+
+    loadNotes(currentSearch).finally(() => {
+        setTimeout(() => focusLock = false, 2000);
+    });
 });
