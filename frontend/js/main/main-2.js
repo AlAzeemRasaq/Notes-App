@@ -395,19 +395,40 @@ function showSavingIndicator(noteElement) {
 }
 
 // ===== TOAST NOTIFICATIONS =====
-function showToast(message) {
+function showToast(message, type = "info", duration = 2500) {
     const container = document.getElementById("toastContainer");
     if (!container) return;
 
     const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.innerText = message;
+    toast.className = `toast toast-${type}`;
+
+    // ===== ICON SYSTEM =====
+    const icons = {
+        success: "✅",
+        error: "❌",
+        warning: "⚠️",
+        info: "ℹ️"
+    };
+
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close">✖</button>
+    `;
+
+    // ===== CLOSE BUTTON =====
+    toast.querySelector(".toast-close").onclick = () => {
+        toast.classList.add("fade-out");
+        setTimeout(() => toast.remove(), 300);
+    };
 
     container.appendChild(toast);
 
-    // Auto remove with fade-out
-    setTimeout(() => {
-        toast.classList.add("fade-out");
-        setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    // ===== AUTO REMOVE (unless error) =====
+    if (type !== "error") {
+        setTimeout(() => {
+            toast.classList.add("fade-out");
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
 }
