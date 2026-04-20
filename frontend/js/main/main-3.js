@@ -108,6 +108,41 @@ document.getElementById("searchInput")?.addEventListener("input", (e) => {
     }, 300);
 });
 
+// ===== ADVANCED SEARCH PARSER =====
+function parseSearch(query) {
+    const filters = {
+        text: [],
+        tag: null,
+        pinned: null,
+        archived: null
+    };
+
+    query.split(/\s+/).forEach(term => {
+        if (!term) return;
+
+        if (term.startsWith("tag:")) {
+            filters.tag = term.replace("tag:", "").toLowerCase();
+        } 
+        else if (term === "pinned:true") {
+            filters.pinned = true;
+        } 
+        else if (term === "pinned:false") {
+            filters.pinned = false;
+        } 
+        else if (term === "archived:true") {
+            filters.archived = true;
+        } 
+        else if (term === "archived:false") {
+            filters.archived = false;
+        } 
+        else {
+            filters.text.push(term.toLowerCase());
+        }
+    });
+
+    return filters;
+}
+
 // ===== TAG SUGGESTIONS =====
 const tagInput = document.getElementById("tagInput");
 const tagSuggestions = document.getElementById("tagSuggestions");
