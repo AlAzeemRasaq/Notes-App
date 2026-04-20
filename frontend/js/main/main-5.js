@@ -1,10 +1,25 @@
+// ===== CACHED DOM ELEMENTS =====
+const selectAllNotesEl = document.getElementById("selectAllNotes");
+const bulkOptionsEl = document.getElementById("bulkOptions");
+const shortcutsListEl = document.getElementById("shortcutsList");
+const toggleShortcutsBtn = document.getElementById("toggleShortcuts");
+const sidebarEl = document.querySelector(".sidebar");
+const menuBtnEl = document.getElementById("mobileMenuBtn");
+
 // ===== BULK ACTIONS =====
-document.getElementById("selectAllNotes")?.addEventListener("change", (e) => {
-    const checkboxes = document.querySelectorAll(".note-checkbox");
+selectAllNotesEl?.addEventListener("change", (e) => {
+    const checkboxes = checkboxCache;
+
     selectedNotes.clear();
+
     checkboxes.forEach(cb => {
         cb.checked = e.target.checked;
-        if (e.target.checked) selectedNotes.add(cb.closest(".note").dataset.id);
+
+        const id = cb.dataset.id || cb.closest(".note")?.dataset.id;
+
+        if (e.target.checked && id) {
+            selectedNotes.add(id);
+        }
     });
 });
 
@@ -23,7 +38,7 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
     allNotes = allNotes.filter(n => !selectedNotes.has(n._id));
 
     selectedNotes.clear();
-    document.getElementById("selectAllNotes").checked = false;
+    if (selectAllNotesEl) selectAllNotesEl.checked = false;
 
     applyFilters();
 });
@@ -31,28 +46,34 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
 document.getElementById("bulkArchive")?.addEventListener("click", async () => {
     if (selectedNotes.size === 0) return alert("No notes selected!");
 
-    const ids = Array.from(selectedNotes || []);
+    const ids = Array.from(selectedNotes);
     if (!ids.length) return;
+
     await bulkArchive(ids);
 
     allNotes.forEach(n => {
-        if (selectedNotes.has(n._id)) n.archived = !n.archived;
+        if (selectedNotes.has(n._id)) {
+            n.archived = true; // FIX: no toggle
+        }
     });
 
     selectedNotes.clear();
-    document.getElementById("selectAllNotes").checked = false;
+    if (selectAllNotesEl) selectAllNotesEl.checked = false;
 
     applyFilters();
 });
 
-// ===== SELECT MODE TOGGLE =====
+// ===== SELECT MODE =====
 document.getElementById("selectModeBtn")?.addEventListener("click", () => {
     selectMode = !selectMode;
-    document.getElementById("bulkOptions").style.display = selectMode ? "block" : "none";
+
+    if (bulkOptionsEl) {
+        bulkOptionsEl.style.display = selectMode ? "block" : "none";
+    }
 
     if (!selectMode) {
         selectedNotes.clear();
-        document.getElementById("selectAllNotes").checked = false;
+        if (selectAllNotesEl) selectAllNotesEl.checked = false;
     }
 
     document.querySelectorAll(".note-checkbox").forEach(cb => {
@@ -63,31 +84,30 @@ document.getElementById("selectModeBtn")?.addEventListener("click", () => {
 
 document.getElementById("cancelSelectBtn")?.addEventListener("click", () => {
     selectMode = false;
-    document.getElementById("bulkOptions").style.display = "none";
+
+    if (bulkOptionsEl) bulkOptionsEl.style.display = "none";
+
     selectedNotes.clear();
-    document.getElementById("selectAllNotes").checked = false;
+    if (selectAllNotesEl) selectAllNotesEl.checked = false;
+
     document.querySelectorAll(".note-checkbox").forEach(cb => {
         cb.checked = false;
         cb.style.display = "none";
     });
 });
 
-// ===== QUICK NOTE INPUT HANDLER =====
+// ===== QUICK NOTE INPUT =====
 const quickNoteInput = document.getElementById("quickNoteInput");
 
-if (quickNoteInput) {
-    quickNoteInput.addEventListener("keypress", async (e) => {
-        if (e.key === "Enter") {
-            const value = quickNoteInput.value.trim();
+quickNoteInput?.addEventListener("keypress", async (e) => {
+    if (e.key === "Enter") {
+        const value = quickNoteInput.value.trim();
+        if (!value) return;
 
-            if (!value) return;
-
-            await createQuickNote(value);
-
-            quickNoteInput.value = ""; // clear input
-        }
-    });
-}
+        await createQuickNote(value);
+        quickNoteInput.value = "";
+    }
+});
 
 // ===== ARCHIVE DROP ZONE =====
 const archiveZone = document.getElementById("archiveDropZone");
@@ -112,48 +132,57 @@ if (archiveZone) {
         await archiveNote(draggedNoteId);
         draggedNoteId = null;
 
-        loadNotes(); // ✅ single source of truth
+        safeLoadNotes(); // FIX: prevent spam reloads
     });
+}
+
+// ===== LOAD GUARD (performance fix) =====
+let isRefreshing = false;
+
+async function safeLoadNotes(search = currentSearch) {
+    if (isRefreshing) return;
+    isRefreshing = true;
+
+    try {
+        await loadNotes(search);
+    } finally {
+        isRefreshing = false;
+    }
 }
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener("keydown", (e) => {
-    // Prevent shortcuts while typing in inputs (except Escape)
     const isTyping = ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName);
 
-    // Allow Escape always
     if (isTyping && e.key !== "Escape") return;
 
-    // CTRL / CMD detection
     const ctrl = e.ctrlKey || e.metaKey;
 
-    // ===== CREATE NOTE =====
+    // CREATE NOTE
     if (ctrl && e.key === "Enter") {
         e.preventDefault();
         createNoteAction();
     }
 
-    // ===== FOCUS SEARCH =====
+    // SEARCH
     if (ctrl && e.key.toLowerCase() === "k") {
         e.preventDefault();
         document.getElementById("searchInput")?.focus();
     }
 
-    // ===== TOGGLE SELECT MODE =====
-    if (ctrl && e.key.toLowerCase() === "a") {
+    // SELECT MODE (FIX: was CTRL+A conflict)
+    if (ctrl && e.key.toLowerCase() === "m") {
         e.preventDefault();
         document.getElementById("selectModeBtn")?.click();
     }
 
-    // ===== DELETE SELECTED =====
-    if (e.key === "Delete") {
-        if (selectedNotes.size > 0) {
-            e.preventDefault();
-            document.getElementById("bulkDelete")?.click();
-        }
+    // DELETE
+    if (e.key === "Delete" && selectedNotes.size > 0) {
+        e.preventDefault();
+        document.getElementById("bulkDelete")?.click();
     }
 
-    // ===== DUPLICATE (if one selected) =====
+    // DUPLICATE
     if (ctrl && e.key.toLowerCase() === "d") {
         if (selectedNotes.size === 1) {
             e.preventDefault();
@@ -162,18 +191,14 @@ document.addEventListener("keydown", (e) => {
         }
     }
 
-    // ===== ESCAPE (exit modes) =====
+    // ESCAPE
     if (e.key === "Escape") {
-        // Exit select mode
         if (selectMode) {
             document.getElementById("cancelSelectBtn")?.click();
         }
 
-        // Exit editing
         const activeNote = document.querySelector(".note.editing");
-        if (activeNote) {
-            closeEditMode(activeNote);
-        }
+        if (activeNote) closeEditMode(activeNote);
     }
 });
 
@@ -182,6 +207,8 @@ async function openHistory(noteId) {
     const history = await getNoteHistory(noteId);
 
     const list = document.getElementById("historyList");
+    if (!list) return;
+
     list.innerHTML = "";
 
     history.reverse().forEach(version => {
@@ -197,58 +224,49 @@ async function openHistory(noteId) {
         list.appendChild(div);
     });
 
-    document.getElementById("historyModal").classList.remove("hidden");
+    document.getElementById("historyModal")?.classList.remove("hidden");
 }
 
-// ===== SORTING =====
+// ===== SORT =====
 document.getElementById("sortRecentBtn")?.addEventListener("click", () => {
     sortMode = sortMode === "recent" ? "default" : "recent";
 
-    document.getElementById("sortRecentBtn").classList.toggle("active");
+    document.getElementById("sortRecentBtn")?.classList.toggle("active");
 
-    loadNotes(currentSearch);
+    safeLoadNotes(currentSearch);
 });
 
-// ===== SHORTCUTS TOGGLE =====
-const toggleShortcutsBtn = document.getElementById("toggleShortcuts");
-const shortcutsList = document.getElementById("shortcutsList");
-
+// ===== SHORTCUTS PANEL =====
 toggleShortcutsBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    shortcutsList.classList.toggle("hidden");
+    shortcutsListEl?.classList.toggle("hidden");
 });
 
-// close when clicking outside
-document.addEventListener("click", (e) => {
-    if (!shortcutsList) return;
+// ===== MOBILE SIDEBAR =====
+menuBtnEl?.addEventListener("click", () => {
+    sidebarEl?.classList.toggle("active");
+});
 
-    if (!shortcutsList.contains(e.target) && e.target !== toggleShortcutsBtn) {
-        shortcutsList.classList.add("hidden");
+// ===== GLOBAL CLICK HANDLER (FIXED MERGED VERSION) =====
+document.addEventListener("click", (e) => {
+    // SIDEBAR CLOSE
+    if (sidebarEl?.classList.contains("active")) {
+        const inside = sidebarEl.contains(e.target);
+        const btn = menuBtnEl?.contains(e.target);
+
+        if (!inside && !btn) {
+            sidebarEl.classList.remove("active");
+        }
     }
-});
 
-// ===== MOBILE SIDEBAR TOGGLE =====
-document.addEventListener("DOMContentLoaded", () => {
-    const menuBtn = document.getElementById("mobileMenuBtn");
-    const sidebar = document.querySelector(".sidebar");
+    // SHORTCUTS CLOSE
+    if (shortcutsListEl && !shortcutsListEl.classList.contains("hidden")) {
+        const inside = shortcutsListEl.contains(e.target);
+        const toggle = e.target === toggleShortcutsBtn;
 
-    if (!menuBtn || !sidebar) return;
-
-    menuBtn.addEventListener("click", () => {
-        sidebar.classList.toggle("active");
-    });
-});
-document.addEventListener("click", (e) => {
-    const sidebar = document.querySelector(".sidebar");
-    const menuBtn = document.getElementById("mobileMenuBtn");
-
-    if (!sidebar.classList.contains("active")) return;
-
-    const clickedInside = sidebar.contains(e.target);
-    const clickedButton = menuBtn.contains(e.target);
-
-    if (!clickedInside && !clickedButton) {
-        sidebar.classList.remove("active");
+        if (!inside && !toggle) {
+            shortcutsListEl.classList.add("hidden");
+        }
     }
 });
 
@@ -256,12 +274,58 @@ document.addEventListener("click", (e) => {
 document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
 loadNotes();
 
-// ===== SAFETY NET RECOVERY =====
+// ===== SAFETY NET =====
 window.addEventListener("load", () => {
     setTimeout(() => {
-        if (!allNotes || !Array.isArray(allNotes)) {
+        if (!Array.isArray(allNotes)) {
             console.warn("Recovery: forcing reload");
-            loadNotes();
+            safeLoadNotes();
         }
     }, 500);
+});
+
+// ===== EXPORT =====
+document.getElementById("exportBtn")?.addEventListener("click", async () => {
+    try {
+        const data = await exportNotes();
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: "application/json"
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "notes-export.json";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        showToast("Notes exported 📤");
+    } catch (err) {
+        console.error(err);
+        alert("Export failed");
+    }
+});
+
+// ===== IMPORT =====
+document.getElementById("importInput")?.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        await importNotes(data);
+
+        showToast("Notes imported 📥");
+        safeLoadNotes();
+    } catch (err) {
+        console.error(err);
+        alert("Invalid file format");
+    }
+
+    e.target.value = "";
 });
