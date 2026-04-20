@@ -13,7 +13,12 @@ document.getElementById("bulkDelete")?.addEventListener("click", async () => {
 
     const ids = Array.from(selectedNotes);
 
-    await bulkDelete(ids);
+    try {
+        await bulkDelete(ids);
+        showToast("Notes deleted", "success");
+    } catch (err) {
+        showToast(err.message, "error");
+    }
 
     allNotes = allNotes.filter(n => !selectedNotes.has(n._id));
 
