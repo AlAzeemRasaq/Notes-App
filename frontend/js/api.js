@@ -61,16 +61,33 @@ async function apiRequest(endpoint, method = "GET", body = null) {
 
     let res;
 
+    // ===== NETWORK ERROR =====
     try {
         res = await fetch(url, options);
     } catch (err) {
         console.error("❌ Network error:", err);
-        throw new Error("Network error - check backend/server");
+        throw new Error("Network error — is the server running?");
     }
 
     console.log("STATUS:", res.status);
 
-    // ===== HANDLE AUTH =====
+    let data = null;
+
+    // ===== SAFE PARSE (JSON OR TEXT) =====
+    try {
+        const contentType = res.headers.get("content-type") || "";
+
+        if (contentType.includes("application/json")) {
+            data = await res.json();
+        } else {
+            const text = await res.text();
+            data = text ? { message: text } : null;
+        }
+    } catch (err) {
+        console.warn("⚠️ Response parse failed");
+    }
+
+    // ===== AUTH HANDLING =====
     if (res.status === 401) {
         console.warn("⚠️ Unauthorized - redirecting to login");
 
@@ -80,23 +97,23 @@ async function apiRequest(endpoint, method = "GET", body = null) {
             window.location.href = "login.html";
         }
 
-        throw new Error("Unauthorized");
+        throw new Error("Session expired. Please log in again.");
     }
 
-    // ===== HANDLE OTHER ERRORS =====
+    // ===== ERROR HANDLING =====
     if (!res.ok) {
-        const text = await res.text();
-        console.error("❌ API error:", text);
-        throw new Error(text || `API error ${res.status}`);
+        const message =
+            data?.error ||
+            data?.message ||
+            `Request failed (${res.status})`;
+
+        console.error("❌ API error:", message);
+
+        throw new Error(message);
     }
 
-    // ===== SAFE JSON PARSE =====
-    try {
-        return res.status !== 204 ? await res.json() : null;
-    } catch (err) {
-        console.error("❌ JSON parse error:", err);
-        throw new Error("Invalid JSON response");
-    }
+    // ===== SUCCESS =====
+    return data;
 }
 
 // NOTES API
