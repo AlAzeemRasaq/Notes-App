@@ -1,9 +1,19 @@
+let checkboxCache = [];
+const markdownCache = new Map();
+
+let debouncedRender;
+
+// ===== INIT (safe debounce setup) =====
+document.addEventListener("DOMContentLoaded", () => {
+    debouncedRender = debounce(renderNotes, 50);
+});
+
 // ===== UI STATES =====
 function showLoading() {
     const container = document.getElementById("notesContainer");
     container.replaceChildren();
 
-    const skeletonCount = 10; // can be increased
+    const skeletonCount = 10;
 
     for (let i = 0; i < skeletonCount; i++) {
         const div = document.createElement("div");
@@ -27,11 +37,16 @@ function showEmpty(message = "No notes yet") {
 
 // ===== MODAL HANDLING =====
 let modal;
+
 document.addEventListener("DOMContentLoaded", () => {
     modal = document.getElementById("modal");
+
+    const modalOverlay = modal?.querySelector(".modal-overlay");
+    const modalCloseBtn = modal?.querySelector(".close-btn");
+
+    modalOverlay?.addEventListener("click", closeModal);
+    modalCloseBtn?.addEventListener("click", closeModal);
 });
-const modalOverlay = modal?.querySelector(".modal-overlay");
-const modalCloseBtn = modal?.querySelector(".close-btn");
 
 function openModal() {
     if (!modal) return;
@@ -45,10 +60,6 @@ function closeModal() {
     setTimeout(() => modal.classList.add("hidden"), 250);
 }
 
-modalOverlay?.addEventListener("click", closeModal);
-modalCloseBtn?.addEventListener("click", closeModal);
-
-// ===== MODAL UPDATES =====
 function showModal(title, message, onConfirm, onCancel) {
     if (!modal) return;
 
@@ -62,12 +73,12 @@ function showModal(title, message, onConfirm, onCancel) {
 
     confirmBtn.onclick = () => {
         modal.classList.remove("active");
-        if (onConfirm) onConfirm();
+        onConfirm?.();
     };
 
     cancelBtn.onclick = () => {
         modal.classList.remove("active");
-        if (onCancel) onCancel();
+        onCancel?.();
     };
 
     modal.classList.add("active");
@@ -77,14 +88,17 @@ let lastRenderedIds = [];
 
 // ===== RENDER NOTES =====
 function renderNotes(notes) {
+    checkboxCache = [];
+
     if (!Array.isArray(notes)) notes = [];
+    const fragment = document.createDocumentFragment();
 
     const ids = notes.map(n => n._id);
 
-    // 🚀 skip re-render if same data
-    if (JSON.stringify(ids) === JSON.stringify(lastRenderedIds)) {
-        return;
-    }
+    if (
+        ids.length === lastRenderedIds.length &&
+        ids.every((id, i) => id === lastRenderedIds[i])
+    ) return;
 
     lastRenderedIds = ids;
 
@@ -98,45 +112,9 @@ function renderNotes(notes) {
         div.className = "note";
         div.dataset.id = note._id;
         div.draggable = !isTrashPage();
-
-        // ===== DRAG EVENTS (FIXED) =====
-        div.draggable = !isTrashPage();
-
-        div.addEventListener("dragstart", (e) => {
-            if (e.target.closest("button") || e.target.isContentEditable) {
-                e.preventDefault();
-                return;
-            }
-
-            draggedNoteId = note._id;
-            div.classList.add("dragging");
-        });
-
-        div.addEventListener("dragend", () => {
-            draggedNoteId = null;
-            div.classList.remove("dragging");
-        });
-
-        // ✅ ALLOW DROP
-        div.addEventListener("dragover", (e) => {
-            e.preventDefault();
-        });
-
-        // ✅ HANDLE DROP
-        div.addEventListener("drop", async (e) => {
-            e.preventDefault();
-
-            const targetId = note._id;
-
-            if (!draggedNoteId || draggedNoteId === targetId) return;
-
-            await reorderNotesAction(draggedNoteId, targetId);
-        });
-
-        // 🖌️ preserve note color
         div.style.backgroundColor = note.color || "#ffffff";
 
-        // ===== BULK SELECTION =====
+        // ===== CHECKBOX =====
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.className = "note-checkbox";
@@ -147,12 +125,15 @@ function renderNotes(notes) {
             if (checkbox.checked) selectedNotes.add(note._id);
             else selectedNotes.delete(note._id);
 
-            const allCheckboxes = document.querySelectorAll(".note-checkbox");
-            document.getElementById("selectAllNotes").checked =
-                Array.from(allCheckboxes).every(cb => cb.checked);
+            const visible = checkboxCache.filter(cb => cb.style.display !== "none");
+            const allChecked = visible.length > 0 && visible.every(cb => cb.checked);
+
+            const selectAllCheckbox = document.getElementById("selectAllNotes");
+            if (selectAllCheckbox) selectAllCheckbox.checked = allChecked;
         });
 
         div.appendChild(checkbox);
+        checkboxCache.push(checkbox);
 
         // ===== NOTE CONTENT =====
         const contentContainer = document.createElement("div");
@@ -163,7 +144,14 @@ function renderNotes(notes) {
 
         const contentEl = document.createElement("div");
         contentEl.className = "note-content";
-        contentEl.innerHTML = parseMarkdown(note.content || "");
+
+        const raw = note.content || "";
+
+        if (!markdownCache.has(note._id)) {
+            markdownCache.set(note._id, parseMarkdown(raw));
+        }
+
+        contentEl.innerHTML = markdownCache.get(note._id);
 
         const tagsEl = document.createElement("div");
         tagsEl.className = "tags";
@@ -176,13 +164,13 @@ function renderNotes(notes) {
 
         const updatedEl = document.createElement("small");
         updatedEl.className = "note-updated";
-        updatedEl.textContent =
-            note.updated_at ? `Last edited: ${formatDate(note.updated_at)}` : "";
+        updatedEl.textContent = note.updated_at
+            ? `Last edited: ${formatDate(note.updated_at)}`
+            : "";
 
         const actionsEl = document.createElement("div");
         actionsEl.className = "note-actions";
 
-        // ================= TRASH MODE =================
         if (isTrashPage()) {
             const restoreBtn = document.createElement("button");
             restoreBtn.textContent = "♻️ Restore";
@@ -193,18 +181,13 @@ function renderNotes(notes) {
             deleteBtn.onclick = () => permanentDeleteNoteAction(note._id);
 
             actionsEl.append(restoreBtn, deleteBtn);
-        }
-
-        // ================= NORMAL MODE =================
-        else {
+        } else {
             const editBtn = document.createElement("button");
             editBtn.textContent = "Edit";
             editBtn.onclick = (e) => {
                 e.stopPropagation();
-
-                document.querySelectorAll(".note.editing").forEach(n => {
-                    n.classList.remove("editing");
-                });
+                document.querySelectorAll(".note.editing")
+                    .forEach(n => n.classList.remove("editing"));
 
                 div.classList.add("editing");
                 enableInlineEdit(div, note);
@@ -231,19 +214,15 @@ function renderNotes(notes) {
 
             const duplicateBtn = document.createElement("button");
             duplicateBtn.textContent = "📄";
-            duplicateBtn.title = "Duplicate";
             duplicateBtn.onclick = () => duplicateNote(note._id);
 
-            // ================= 🆕 HISTORY BUTTON =================
             const historyBtn = document.createElement("button");
             historyBtn.textContent = "🕒";
-            historyBtn.title = "History";
             historyBtn.onclick = (e) => {
                 e.stopPropagation();
                 openHistory(note._id);
             };
 
-            // Undo/redo
             const undoBtn = document.createElement("button");
             undoBtn.textContent = "↩️";
             undoBtn.onclick = () => undoEdit(note._id);
@@ -251,10 +230,6 @@ function renderNotes(notes) {
             const redoBtn = document.createElement("button");
             redoBtn.textContent = "↪️";
             redoBtn.onclick = () => redoEdit(note._id);
-
-            actionsEl.addEventListener("mousedown", (e) => {
-                e.stopPropagation();
-            });
 
             actionsEl.append(
                 editBtn,
@@ -272,13 +247,13 @@ function renderNotes(notes) {
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
 
-        // ===== CLICK/DOUBLECLICK =====
-        contentContainer.addEventListener("click", () => div.classList.toggle("open"));
+        contentContainer.addEventListener("click", () =>
+            div.classList.toggle("open")
+        );
 
         contentContainer.addEventListener("dblclick", () => {
-            document.querySelectorAll(".note.editing").forEach(n => {
-                n.classList.remove("editing");
-            });
+            document.querySelectorAll(".note.editing")
+                .forEach(n => n.classList.remove("editing"));
 
             div.classList.add("editing");
             enableInlineEdit(div, note);
@@ -288,95 +263,108 @@ function renderNotes(notes) {
 
         fragment.appendChild(div);
     });
-    
+
     container.appendChild(fragment);
 }
 
-// ===== APPLY FILTERS (SEARCH + TAG) =====
+// ===== DRAG & DROP =====
+let draggedNoteId = null;
+
+document.addEventListener("dragstart", (e) => {
+    const note = e.target.closest(".note");
+    if (!note) return;
+
+    if (e.target.closest("button") || e.target.isContentEditable) {
+        e.preventDefault();
+        return;
+    }
+
+    draggedNoteId = note.dataset.id;
+    note.classList.add("dragging");
+});
+
+document.addEventListener("dragend", (e) => {
+    const note = e.target.closest(".note");
+    if (!note) return;
+
+    draggedNoteId = null;
+    note.classList.remove("dragging");
+});
+
+document.addEventListener("dragover", (e) => {
+    if (e.target.closest(".note")) e.preventDefault();
+});
+
+document.addEventListener("drop", async (e) => {
+    const target = e.target.closest(".note");
+    if (!target || !draggedNoteId) return;
+
+    e.preventDefault();
+
+    const targetId = target.dataset.id;
+    if (draggedNoteId === targetId) return;
+
+    await reorderNotesAction(draggedNoteId, targetId);
+});
+
+// ===== APPLY FILTERS =====
 function applyFilters() {
     if (!Array.isArray(allNotes)) allNotes = [];
 
-    const terms = currentSearch.split(/\s+/).filter(Boolean);
-    const debouncedRender = debounce(renderNotes, 50);
-
     let baseNotes = [...allNotes];
 
-    // PAGE FILTERS
-    if (isTrashPage()) {
-        baseNotes = [...allNotes];
-    } 
-    else if (isArchivePage()) {
-        baseNotes = [...allNotes];
-    } 
-    else if (!isTrashPage() && !isArchivePage()) {
+    if (!isTrashPage() && !isArchivePage()) {
         baseNotes = baseNotes.filter(n => !n.archived && !n.trashed);
     }
 
-    // ===== EMPTY STATE SAFETY =====
-    if (!baseNotes || baseNotes.length === 0) {
+    if (!baseNotes.length) {
         const container = document.getElementById("notesContainer");
-        if (container) container.replaceChildren();
+        container?.replaceChildren();
 
         if (isTrashPage()) return showEmpty("Trash is empty 🗑️");
         if (isArchivePage()) return showEmpty("No archived notes 📦");
         return showEmpty("No notes yet. Create one ✍️");
     }
 
-    // ===== ADVANCED FILTERING =====
     const filters = parseSearch(currentSearch);
+    const terms = currentSearch.split(/\s+/).filter(Boolean);
 
     let filtered = baseNotes.filter(note => {
         const title = (note.title || "").toLowerCase();
         const content = (note.content || "").toLowerCase();
         const tags = (note.tags || []).map(t => t.toLowerCase());
 
-        // 🔤 TEXT SEARCH
-        const matchesText =
-            filters.text.length === 0 ||
-            filters.text.every(term =>
-                title.includes(term) ||
-                content.includes(term) ||
-                tags.some(tag => tag.includes(term))
-            );
-
-        // 🏷️ TAG FILTER
-        const matchesTag =
-            !filters.tag || tags.includes(filters.tag);
-
-        // 📌 PIN FILTER
-        const matchesPinned =
-            filters.pinned === null || note.pinned === filters.pinned;
-
-        // 📦 ARCHIVE FILTER
-        const matchesArchived =
-            filters.archived === null || note.archived === filters.archived;
-
-        return matchesText && matchesTag && matchesPinned && matchesArchived;
+        return (
+            (filters.text.length === 0 ||
+                filters.text.every(t =>
+                    title.includes(t) ||
+                    content.includes(t) ||
+                    tags.some(tag => tag.includes(t))
+                )) &&
+            (!filters.tag || tags.includes(filters.tag)) &&
+            (filters.pinned === null || note.pinned === filters.pinned) &&
+            (filters.archived === null || note.archived === filters.archived)
+        );
     });
 
-    if (filtered.length === 0) {
-        showEmpty("No results found 🔍");
-        return;
-    }
+    if (!filtered.length) return showEmpty("No results found 🔍");
 
-    // RELEVANCE SORT
-    if (terms.length > 0) {
+    if (terms.length) {
         filtered.sort((a, b) => {
-            const score = (note) => {
+            const score = (n) => {
                 let s = 0;
-                const title = (note.title || "").toLowerCase();
-                const content = (note.content || "").toLowerCase();
-                const tags = (note.tags || []).join(" ").toLowerCase();
+                const t = (n.title || "").toLowerCase();
+                const c = (n.content || "").toLowerCase();
+                const tg = (n.tags || []).join(" ").toLowerCase();
 
                 terms.forEach(term => {
-                    if (title.includes(term)) s += 3;
-                    if (content.includes(term)) s += 2;
-                    if (tags.includes(term)) s += 1;
+                    if (t.includes(term)) s += 3;
+                    if (c.includes(term)) s += 2;
+                    if (tg.includes(term)) s += 1;
                 });
 
                 return s;
             };
-
             return score(b) - score(a);
         });
     }
@@ -384,7 +372,7 @@ function applyFilters() {
     debouncedRender(filtered);
 }
 
-// ===== SAVING INDICATOR =====
+// ===== SAVING =====
 function showSavingIndicator(noteElement) {
     let indicator = noteElement.querySelector(".saving-indicator");
 
@@ -396,22 +384,14 @@ function showSavingIndicator(noteElement) {
         indicator.style.opacity = "0.7";
         indicator.style.marginLeft = "8px";
 
-        // Attach near actions or at bottom
         const actions = noteElement.querySelector(".note-actions");
-        if (actions) {
-            actions.appendChild(indicator);
-        } else {
-            noteElement.appendChild(indicator);
-        }
+        (actions || noteElement).appendChild(indicator);
     }
 
-    // Remove after a short delay
-    setTimeout(() => {
-        indicator?.remove();
-    }, 1000);
+    setTimeout(() => indicator?.remove(), 1000);
 }
 
-// ===== TOAST NOTIFICATIONS =====
+// ===== TOAST =====
 function showToast(message, type = "info", duration = 2500) {
     const container = document.getElementById("toastContainer");
     if (!container) return;
@@ -419,7 +399,6 @@ function showToast(message, type = "info", duration = 2500) {
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
 
-    // ===== ICON SYSTEM =====
     const icons = {
         success: "✅",
         error: "❌",
@@ -428,20 +407,18 @@ function showToast(message, type = "info", duration = 2500) {
     };
 
     toast.innerHTML = `
-        <span class="toast-icon">${icons[type] || icons.info}</span>
-        <span class="toast-message">${message}</span>
-        <button class="toast-close">✖</button>
+        <span>${icons[type] || icons.info}</span>
+        <span>${message}</span>
+        <button>✖</button>
     `;
 
-    // ===== CLOSE BUTTON =====
-    toast.querySelector(".toast-close").onclick = () => {
+    toast.querySelector("button").onclick = () => {
         toast.classList.add("fade-out");
         setTimeout(() => toast.remove(), 300);
     };
 
     container.appendChild(toast);
 
-    // ===== AUTO REMOVE (unless error) =====
     if (type !== "error") {
         setTimeout(() => {
             toast.classList.add("fade-out");
