@@ -190,39 +190,57 @@ function enableInlineEdit(noteEl, note) {
     if (editingNoteId && editingNoteId !== note._id) return;
     editingNoteId = note._id;
 
-    const title = noteEl.querySelector("h3");
-    const content = noteEl.querySelector(".note-content");
+    const titleEl = noteEl.querySelector("h3");
+    const contentEl = noteEl.querySelector(".note-content");
+
+    const rawContent = contentEl.dataset.raw || note.content || "";
 
     const original = {
-        title: title.textContent,
-        content: content.innerHTML
+        title: titleEl.textContent,
+        content: rawContent
     };
 
-    title.contentEditable = true;
-    content.contentEditable = true;
+    // ===== CREATE EDIT FIELDS =====
+    const titleInput = document.createElement("input");
+    titleInput.className = "edit-title";
+    titleInput.value = original.title;
 
-    title.focus();
+    const textarea = document.createElement("textarea");
+    textarea.className = "edit-content";
+    textarea.value = original.content;
 
-    const autosave = () => triggerInlineAutosave(noteEl, note);
+    // Replace elements
+    titleEl.replaceWith(titleInput);
+    contentEl.replaceWith(textarea);
 
-    title.oninput = autosave;
-    content.oninput = autosave;
+    titleInput.focus();
 
+    // ===== AUTOSAVE =====
+    const autosave = () => {
+        triggerInlineAutosave(noteEl, note, titleInput.value, textarea.value);
+    };
+
+    titleInput.oninput = autosave;
+    textarea.oninput = autosave;
+
+    // ===== SAVE =====
     const save = async () => {
-        await saveInlineEdit(noteEl, note);
+        await saveInlineEdit(noteEl, note, titleInput.value, textarea.value);
     };
 
-    title.onblur = save;
-    content.onblur = save;
+    titleInput.onblur = save;
+    textarea.onblur = save;
 
+    // ===== ESC CANCEL =====
     document.addEventListener("keydown", function esc(e) {
         if (e.key !== "Escape") return;
 
-        title.textContent = original.title;
-        content.innerHTML = original.content;
+        titleInput.replaceWith(titleEl);
+        textarea.replaceWith(contentEl);
 
-        title.contentEditable = false;
-        content.contentEditable = false;
+        titleEl.textContent = original.title;
+        contentEl.innerHTML = parseMarkdown(original.content);
+        contentEl.dataset.raw = original.content;
 
         editingNoteId = null;
         document.removeEventListener("keydown", esc);
@@ -230,34 +248,36 @@ function enableInlineEdit(noteEl, note) {
 }
 
 // ===== AUTOSAVE =====
-function triggerInlineAutosave(noteEl, note) {
+function triggerInlineAutosave(noteEl, note, title, content) {
     const id = note._id;
-
-    const title = noteEl.querySelector("h3").textContent.trim();
-    const content = noteEl.querySelector(".note-content").innerHTML.trim();
 
     showSavingIndicator(noteEl);
 
     clearTimeout(autosaveTimers[id]);
 
     autosaveTimers[id] = setTimeout(() => {
-        updateNote(id, title, content, note.tags || []).catch(console.error);
+        updateNote(id, title.trim(), content.trim(), note.tags || [])
+            .catch(console.error);
     }, 500);
 }
 
-async function saveInlineEdit(noteEl, note) {
-    const title = noteEl.querySelector("h3").textContent.trim();
-    const content = noteEl.querySelector(".note-content").innerHTML.trim();
+async function saveInlineEdit(noteEl, note, title, content) {
+    title = title.trim();
+    content = content.trim();
 
     if (!title && !content) return alert("Empty note not allowed");
 
     await updateNote(note._id, title, content, note.tags || []);
 
+    // ✅ update local state
     Object.assign(note, {
         title,
         content,
         updated_at: new Date().toISOString()
     });
+
+    // ✅ update markdown cache
+    window.markdownCache.set(note._id, parseMarkdown(content));
 
     editingNoteId = null;
 
@@ -307,7 +327,7 @@ async function restoreNoteAction(id) {
 }
 
 async function permanentDeleteNoteAction(id) {
-    if (!confirm("Delete permanently?")) return;
+    if (!(await showConfirmPopup("Delete permanently?"))) return;
 
     await deleteNotePermanently(id);
     allNotes = allNotes.filter(n => n._id !== id);
