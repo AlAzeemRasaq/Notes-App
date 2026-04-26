@@ -2,10 +2,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 
+def login(driver):
+    driver.get("http://127.0.0.1:5000/login.html")
+
+    driver.find_element(By.ID, "email").send_keys("test@example.com")
+    driver.find_element(By.ID, "password").send_keys("password123")
+    driver.find_element(By.ID, "loginBtn").click()
+
+    time.sleep(2)
+
 def test_create_note():
     driver = webdriver.Chrome()
 
     driver.get("http://127.0.0.1:5000/index.html")
+    login(driver)
 
     # Click "New Note" button
     driver.find_element(By.ID, "newNoteBtn").click()
@@ -30,7 +40,7 @@ def test_search_note():
     driver = webdriver.Chrome()
 
     driver.get("http://127.0.0.1:5000/index.html")
-
+    login(driver)
     # Enter search query
     search_box = driver.find_element(By.ID, "searchInput")
     # Clear the search box first
@@ -49,7 +59,7 @@ def test_archive_note():
     driver = webdriver.Chrome()
 
     driver.get("http://127.0.0.1:5000/index.html")
-
+    login(driver)
     # Find the first note's archive button and click it
     archive_button = driver.find_element(By.CLASS_NAME, "archive-btn")
     # Click the archive button
@@ -66,6 +76,7 @@ def test_delete_note():
     driver = webdriver.Chrome()
 
     driver.get("http://127.0.0.1:5000/index.html")
+    login(driver)
 
     # Find the first note's delete button and click it
     delete_button = driver.find_element(By.CLASS_NAME, "delete-btn")
