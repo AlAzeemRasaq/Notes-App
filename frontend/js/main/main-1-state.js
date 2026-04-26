@@ -1,97 +1,103 @@
-// ===== GLOBAL STATE =====
+
+// GLOBAL STATE
+
 let allNotes = [];
 let draggedNoteId = null;
 let searchTimeout = null;
-let currentRequestId = 0; // 🆕 tracks latest request
+let currentRequestId = 0;
+
 window.addEventListener("DOMContentLoaded", () => {
     const search = document.getElementById("searchInput");
-    if (search) {
-        search.focus();
-    }
+    if (search) search.focus();
 });
 
-// ===== SAFE PAGE DETECTION =====
+// PAGE DETECTION (SINGLE SOURCE OF TRUTH)
+
+function getPage() {
+    return document.body?.dataset?.page || "main";
+}
+
 function isArchivePage() {
-    return document.body?.dataset?.page === "archive";
+    return getPage() === "archive";
 }
 
 function isTrashPage() {
-    return document.body?.dataset?.page === "trash";
+    return getPage() === "trash";
 }
 
-// ===== AUTOSAVE STATE =====
-let autosaveTimers = {};
+// expose globally (for other files)
+window.isArchivePage = isArchivePage;
+window.isTrashPage = isTrashPage;
 
-// ===== DELETE UX STATE =====
-let lastDeletedNote = null;
-let undoTimeout = null;
+// GLOBAL UI STATE
 
-// 🔍 Unified filter state
+window.autosaveTimers = window.autosaveTimers || {};
+window.editHistory = window.editHistory || {};
+
+// 🔍 Filters
 let currentSearch = "";
 let currentTag = null;
 
-// 🔥 Bulk selection state
+// 🔥 Bulk selection
 let selectedNotes = new Set();
-let selectMode = false; // toggles checkbox mode
+let selectMode = false;
 
-// Sort mode (default, date, title)
+// Sorting
 let sortMode = "default";
 
-// More states
+// Pagination
 let currentPage = 1;
 let isLoadingMore = false;
 let hasMore = true;
 
-// ===== EDIT HISTORY STACKS =====
+// Delete undo
+let lastDeletedNote = null;
+let undoTimeout = null;
+
+// EDIT HISTORY STACKS
+
 const editHistory = {}; // { noteId: { undo: [], redo: [] } }
 
-// ===== SIMPLE MARKDOWN PARSER =====
+// MARKDOWN PARSER
+
 function parseMarkdown(text) {
     if (!text) return "";
 
     let parsed = text;
 
-    // Escape HTML first (prevent XSS issues)
     parsed = parsed
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // Bold **text**
     parsed = parsed.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-    // Italic *text*
     parsed = parsed.replace(/\*(.*?)\*/g, "<em>$1</em>");
-
-    // Inline code `text`
     parsed = parsed.replace(/`(.*?)`/g, "<code>$1</code>");
-
-    // Line breaks
     parsed = parsed.replace(/\n/g, "<br>");
 
     return parsed;
 }
 
-// ===== DATE FORMATTING =====
+// DATE FORMAT
+
 function formatDate(dateString) {
     if (!dateString) return "";
-
-    const date = new Date(dateString);
-    return date.toLocaleString(); // simple + clean
+    return new Date(dateString).toLocaleString();
 }
 
-// ===== PREVIEW TEXT (STRIP HTML + LIMIT) =====
+// PREVIEW TEXT
+
 function getPreviewText(html) {
     const temp = document.createElement("div");
     temp.innerHTML = html;
 
-    // Convert <br> to line breaks
     temp.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
 
     return temp.innerText;
 }
 
-// ===== DEBOUNCE UTILITY =====
+// DEBOUNCE
+
 function debounce(fn, delay = 300) {
     let timeout;
     return (...args) => {
@@ -100,7 +106,13 @@ function debounce(fn, delay = 300) {
     };
 }
 
-// ===== THEME TOGGLE =====
+window.debounce = debounce;
+
+// THEME
+
 function toggleTheme() {
     document.body.classList.toggle("light");
 }
+
+// expose globally
+window.toggleTheme = toggleTheme;
