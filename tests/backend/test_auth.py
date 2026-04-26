@@ -1,60 +1,96 @@
 import pytest
 
-# AUTHENTICATION TESTS
+
+# ================= REGISTER (not guaranteed to pass) =================
 def test_register_success(client):
     """
     Test user registration works correctly.
     """
-    response = client.post("/register", json={
+
+    response = client.post("/api/auth/register", json={
         "username": "newuser",
-        "email": "new@example.com",
+        "email": "newuser@example.com",
         "password": "password123"
     })
 
     assert response.status_code in [200, 201]
 
+    # FIX: backend does NOT guarantee _id
+    assert (
+        "message" in response.json or
+        "user" in response.json or
+        "access_token" in response.json
+    )
 
+
+# ================= DUPLICATE REGISTER =================
 def test_register_duplicate_email(client, test_user):
     """
     Test that duplicate email registration is rejected.
     """
-    response = client.post("/register", json={
+
+    # First registration
+    client.post("/api/auth/register", json=test_user)
+
+    # Duplicate registration attempt
+    response = client.post("/api/auth/register", json={
         "username": "anotheruser",
-        "email": test_user.email,
+        "email": test_user["email"],
         "password": "password123"
     })
 
     assert response.status_code in [400, 409]
 
 
-def test_login_success(client, test_user):
+# ================= LOGIN SUCCESS =================
+def test_login_success(client):
     """
     Test valid login.
     """
-    response = client.post("/login", json={
-        "email": test_user.email,
+
+    # ALWAYS register fresh user inside test
+    client.post("/api/auth/register", json={
+        "username": "loginuser",
+        "email": "login@test.com",
+        "password": "password123"
+    })
+
+    response = client.post("/api/auth/login", json={
+        "email": "login@test.com",
         "password": "password123"
     })
 
     assert response.status_code == 200
 
+    # FIX: be flexible with token key naming
+    assert (
+        "access_token" in response.json or
+        "token" in response.json
+    )
 
+
+# ================= LOGIN INVALID PASSWORD =================
 def test_login_invalid_password(client, test_user):
     """
     Test login fails with wrong password.
     """
-    response = client.post("/login", json={
-        "email": test_user.email,
+
+    client.post("/api/auth/register", json=test_user)
+
+    response = client.post("/api/auth/login", json={
+        "email": test_user["email"],
         "password": "wrongpassword"
     })
 
     assert response.status_code in [401, 403]
 
 
+# ================= LOGIN MISSING FIELDS =================
 def test_login_missing_fields(client):
     """
     Test login fails when fields are missing.
     """
-    response = client.post("/login", json={})
+
+    response = client.post("/api/auth/login", json={})
 
     assert response.status_code in [400, 422]
