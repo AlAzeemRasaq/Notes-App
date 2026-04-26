@@ -53,7 +53,7 @@ document.getElementById("bulkArchive")?.addEventListener("click", async () => {
 
     allNotes.forEach(n => {
         if (selectedNotes.has(n._id)) {
-            n.archived = true; // FIX: no toggle
+            n.archived = true;
         }
     });
 
@@ -132,7 +132,7 @@ if (archiveZone) {
         await archiveNote(draggedNoteId);
         draggedNoteId = null;
 
-        safeLoadNotes(); // FIX: prevent spam reloads
+        safeLoadNotes();
     });
 }
 
@@ -144,11 +144,16 @@ async function safeLoadNotes(search = currentSearch) {
     isRefreshing = true;
 
     try {
-        await loadNotes(search);
+        if (typeof window.loadNotes === "function") {
+            await window.loadNotes(search);
+        }
     } finally {
         isRefreshing = false;
     }
 }
+
+// expose globally (important for cross-file calls)
+window.safeLoadNotes = safeLoadNotes;
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener("keydown", (e) => {
@@ -158,31 +163,26 @@ document.addEventListener("keydown", (e) => {
 
     const ctrl = e.ctrlKey || e.metaKey;
 
-    // CREATE NOTE
     if (ctrl && e.key === "Enter") {
         e.preventDefault();
         createNoteAction();
     }
 
-    // SEARCH
     if (ctrl && e.key.toLowerCase() === "k") {
         e.preventDefault();
         document.getElementById("searchInput")?.focus();
     }
 
-    // SELECT MODE (FIX: was CTRL+A conflict)
     if (ctrl && e.key.toLowerCase() === "m") {
         e.preventDefault();
         document.getElementById("selectModeBtn")?.click();
     }
 
-    // DELETE
     if (e.key === "Delete" && selectedNotes.size > 0) {
         e.preventDefault();
         document.getElementById("bulkDelete")?.click();
     }
 
-    // DUPLICATE
     if (ctrl && e.key.toLowerCase() === "d") {
         if (selectedNotes.size === 1) {
             e.preventDefault();
@@ -191,7 +191,6 @@ document.addEventListener("keydown", (e) => {
         }
     }
 
-    // ESCAPE
     if (e.key === "Escape") {
         if (selectMode) {
             document.getElementById("cancelSelectBtn")?.click();
@@ -227,6 +226,10 @@ async function openHistory(noteId) {
     document.getElementById("historyModal")?.classList.remove("hidden");
 }
 
+function closeHistory() {
+    document.getElementById("historyModal").classList.add("hidden");
+}
+
 // ===== SORT =====
 document.getElementById("sortRecentBtn")?.addEventListener("click", () => {
     sortMode = sortMode === "recent" ? "default" : "recent";
@@ -247,9 +250,8 @@ menuBtnEl?.addEventListener("click", () => {
     sidebarEl?.classList.toggle("active");
 });
 
-// ===== GLOBAL CLICK HANDLER (FIXED MERGED VERSION) =====
+// ===== GLOBAL CLICK HANDLER =====
 document.addEventListener("click", (e) => {
-    // SIDEBAR CLOSE
     if (sidebarEl?.classList.contains("active")) {
         const inside = sidebarEl.contains(e.target);
         const btn = menuBtnEl?.contains(e.target);
@@ -259,7 +261,6 @@ document.addEventListener("click", (e) => {
         }
     }
 
-    // SHORTCUTS CLOSE
     if (shortcutsListEl && !shortcutsListEl.classList.contains("hidden")) {
         const inside = shortcutsListEl.contains(e.target);
         const toggle = e.target === toggleShortcutsBtn;
@@ -270,9 +271,19 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// ===== INIT =====
-document.getElementById("addNoteBtn")?.addEventListener("click", createNoteAction);
-loadNotes();
+// ===== INIT (FIXED BOOTSTRAP) =====
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("addNoteBtn")
+        ?.addEventListener("click", createNoteAction);
+
+    // SAFE STARTUP (fixes your crash)
+    if (typeof window.loadNotes === "function") {
+        window.loadNotes();
+    } else {
+        console.warn("loadNotes not ready yet — retrying...");
+        setTimeout(() => window.safeLoadNotes?.(), 200);
+    }
+});
 
 // ===== SAFETY NET =====
 window.addEventListener("load", () => {
