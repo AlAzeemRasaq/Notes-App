@@ -1,4 +1,3 @@
-
 // REGISTER NEW USER
 async function register() {
   const username = document.getElementById("username").value.trim();
@@ -57,7 +56,9 @@ async function login() {
     localStorage.setItem("token", token);
 
     alert("Login successful!");
-    window.location.href = "index.html";
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 300);
 
   } catch (err) {
     console.error("[LOGIN ERROR]", err);
@@ -66,9 +67,10 @@ async function login() {
 }
 
 // LOGOUT
-function logout() {
+async function logout() {
   localStorage.removeItem("token");
-  alert("Logged out successfully");
+
+  await showConfirmPopup("Logged out successfully (OK to continue)");
   window.location.href = "login.html";
 }
 
