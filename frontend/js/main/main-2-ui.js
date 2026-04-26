@@ -1,41 +1,74 @@
+// GLOBAL SAFE STATE
+
 let checkboxCache = [];
-const markdownCache = new Map();
+
+// MUST be global-safe across files
+window.markdownCache = window.markdownCache || new Map();
+window.isLoadingNotes = false;
 
 let debouncedRender;
+let lastRenderedIds = [];
 
-// ===== INIT (safe debounce setup) =====
+// GLOBAL UTILS (SAFE FALLBACKS)
+
+// debounce MUST exist BEFORE usage anywhere
+function debounce(fn, delay = 300) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), delay);
+    };
+}
+
+// expose globally (prevents cross-file issues)
+window.debounce = debounce;
+
+// INIT
+
 document.addEventListener("DOMContentLoaded", () => {
     debouncedRender = debounce(renderNotes, 50);
 });
 
-// ===== UI STATES =====
-function showLoading() {
+// UI STATES
+
+// MUST be global because main-3.js calls it immediately
+window.showLoading = function () {
     const container = document.getElementById("notesContainer");
+    if (!container) return;
+
+    window.isLoadingNotes = true;
+
     container.replaceChildren();
 
-    const skeletonCount = 10;
+    requestAnimationFrame(() => {
+        const skeletonCount = 10;
 
-    for (let i = 0; i < skeletonCount; i++) {
-        const div = document.createElement("div");
-        div.className = "skeleton";
+        for (let i = 0; i < skeletonCount; i++) {
+            const div = document.createElement("div");
+            div.className = "skeleton";
 
-        div.innerHTML = `
-            <div class="skeleton-title"></div>
-            <div class="skeleton-text"></div>
-            <div class="skeleton-text"></div>
-            <div class="skeleton-text short"></div>
-        `;
+            div.innerHTML = `
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text short"></div>
+            `;
 
-        container.appendChild(div);
-    }
-}
+            container.appendChild(div);
+        }
+    });
+};
 
-function showEmpty(message = "No notes yet") {
+// safe fallback
+window.showEmpty = function (message = "No notes yet") {
     const container = document.getElementById("notesContainer");
-    container.innerHTML = `<div class="state-message">${message}</div>`;
-}
+    if (!container) return;
 
-// ===== MODAL HANDLING =====
+    container.innerHTML = `<div class="state-message">${message}</div>`;
+};
+
+// MODAL HANDLING
+
 let modal;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -84,17 +117,23 @@ function showModal(title, message, onConfirm, onCancel) {
     modal.classList.add("active");
 }
 
-let lastRenderedIds = [];
-
-// ===== RENDER NOTES =====
+// RENDER NOTES
 function renderNotes(notes) {
+    if (window.isLoadingNotes) {
+        window.isLoadingNotes = false;
+    }
     checkboxCache = [];
 
     if (!Array.isArray(notes)) notes = [];
+
+    const container = document.getElementById("notesContainer");
+    if (!container) return;
+
     const fragment = document.createDocumentFragment();
 
     const ids = notes.map(n => n._id);
 
+    // prevent unnecessary re-render
     if (
         ids.length === lastRenderedIds.length &&
         ids.every((id, i) => id === lastRenderedIds[i])
@@ -102,9 +141,9 @@ function renderNotes(notes) {
 
     lastRenderedIds = ids;
 
-    const container = document.getElementById("notesContainer");
-    container.replaceChildren();
-
+    if (!window.isLoadingNotes) {
+        container.replaceChildren();
+    }
     notes = notes.filter(Boolean);
 
     notes.forEach(note => {
@@ -135,7 +174,7 @@ function renderNotes(notes) {
         div.appendChild(checkbox);
         checkboxCache.push(checkbox);
 
-        // ===== NOTE CONTENT =====
+        // ===== CONTENT =====
         const contentContainer = document.createElement("div");
         contentContainer.className = "note-inner";
 
@@ -147,14 +186,17 @@ function renderNotes(notes) {
 
         const raw = note.content || "";
 
-        if (!markdownCache.has(note._id)) {
-            markdownCache.set(note._id, parseMarkdown(raw));
+        if (!window.markdownCache.has(note._id)) {
+            window.markdownCache.set(note._id, parseMarkdown(raw));
         }
 
-        contentEl.innerHTML = markdownCache.get(note._id);
+        contentEl.innerHTML = window.markdownCache.get(note._id);
+        contentEl.dataset.raw = raw;
 
+        // ===== TAGS =====
         const tagsEl = document.createElement("div");
         tagsEl.className = "tags";
+
         (note.tags || []).forEach(tag => {
             const span = document.createElement("span");
             span.textContent = tag;
@@ -162,30 +204,60 @@ function renderNotes(notes) {
             tagsEl.appendChild(span);
         });
 
+        // ===== UPDATED =====
         const updatedEl = document.createElement("small");
         updatedEl.className = "note-updated";
         updatedEl.textContent = note.updated_at
             ? `Last edited: ${formatDate(note.updated_at)}`
             : "";
 
+        // ===== ACTIONS =====
         const actionsEl = document.createElement("div");
         actionsEl.className = "note-actions";
 
+        // TRASH MODE
         if (isTrashPage()) {
             const restoreBtn = document.createElement("button");
-            restoreBtn.textContent = "♻️ Restore";
+            restoreBtn.textContent = "♻️";
+            restoreBtn.title = "Restore note";
+            restoreBtn.setAttribute("aria-label", "Restore note");
             restoreBtn.onclick = () => restoreNoteAction(note._id);
 
             const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "❌ Delete";
+            deleteBtn.textContent = "🗑️";
+            deleteBtn.title = "Permanently delete note";
+            deleteBtn.setAttribute("aria-label", "Permanently delete note");
             deleteBtn.onclick = () => permanentDeleteNoteAction(note._id);
 
             actionsEl.append(restoreBtn, deleteBtn);
-        } else {
+        }
+
+        // ARCHIVE MODE
+        else if (isArchivePage()) {
+            const unarchiveBtn = document.createElement("button");
+            unarchiveBtn.textContent = "↩️";
+            unarchiveBtn.title = "Unarchive note";
+            unarchiveBtn.setAttribute("aria-label", "Unarchive note");
+            unarchiveBtn.onclick = () => toggleArchiveAction(note._id);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "🗑️";
+            deleteBtn.title = "Move to trash";
+            deleteBtn.setAttribute("aria-label", "Move to trash");
+            deleteBtn.onclick = () => deleteNoteAnimated(div, note._id);
+
+            actionsEl.append(unarchiveBtn, deleteBtn);
+        }
+
+        // NORMAL MODE
+        else {
             const editBtn = document.createElement("button");
-            editBtn.textContent = "Edit";
+            editBtn.textContent = "✏️";
+            editBtn.title = "Edit note";
+            editBtn.setAttribute("aria-label", "Edit note");
             editBtn.onclick = (e) => {
                 e.stopPropagation();
+
                 document.querySelectorAll(".note.editing")
                     .forEach(n => n.classList.remove("editing"));
 
@@ -194,19 +266,27 @@ function renderNotes(notes) {
             };
 
             const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
+            deleteBtn.textContent = "🗑️";
+            deleteBtn.title = "Move to trash";
+            deleteBtn.setAttribute("aria-label", "Move to trash");
             deleteBtn.onclick = () => deleteNoteAnimated(div, note._id);
 
             const pinBtn = document.createElement("button");
             pinBtn.textContent = "📌";
+            pinBtn.title = "Pin note";
+            pinBtn.setAttribute("aria-label", "Pin note");
             pinBtn.onclick = () => togglePinAction(note._id);
 
             const archiveBtn = document.createElement("button");
-            archiveBtn.textContent = isArchivePage() ? "↩️" : "📦";
+            archiveBtn.textContent = "📦";
+            archiveBtn.title = "Archive note";
+            archiveBtn.setAttribute("aria-label", "Archive note");
             archiveBtn.onclick = () => toggleArchiveAction(note._id);
 
             const colorBtn = document.createElement("button");
             colorBtn.textContent = "🎨";
+            colorBtn.title = "Change note color";
+            colorBtn.setAttribute("aria-label", "Change note color");
             colorBtn.onclick = (e) => {
                 e.stopPropagation();
                 showColorPopup(note._id, colorBtn);
@@ -214,22 +294,18 @@ function renderNotes(notes) {
 
             const duplicateBtn = document.createElement("button");
             duplicateBtn.textContent = "📄";
+            duplicateBtn.title = "Duplicate note";
+            duplicateBtn.setAttribute("aria-label", "Duplicate note");
             duplicateBtn.onclick = () => duplicateNote(note._id);
 
             const historyBtn = document.createElement("button");
             historyBtn.textContent = "🕒";
+            historyBtn.title = "View note history";
+            historyBtn.setAttribute("aria-label", "View note history");
             historyBtn.onclick = (e) => {
                 e.stopPropagation();
                 openHistory(note._id);
             };
-
-            const undoBtn = document.createElement("button");
-            undoBtn.textContent = "↩️";
-            undoBtn.onclick = () => undoEdit(note._id);
-
-            const redoBtn = document.createElement("button");
-            redoBtn.textContent = "↪️";
-            redoBtn.onclick = () => redoEdit(note._id);
 
             actionsEl.append(
                 editBtn,
@@ -238,38 +314,21 @@ function renderNotes(notes) {
                 archiveBtn,
                 colorBtn,
                 duplicateBtn,
-                historyBtn,
-                undoBtn,
-                redoBtn
+                historyBtn
             );
         }
 
         contentContainer.append(titleEl, contentEl, tagsEl, updatedEl, actionsEl);
         div.appendChild(contentContainer);
 
-        contentContainer.addEventListener("click", () =>
-            div.classList.toggle("open")
-        );
-
-        contentContainer.addEventListener("dblclick", () => {
-            document.querySelectorAll(".note.editing")
-                .forEach(n => n.classList.remove("editing"));
-
-            div.classList.add("editing");
-            enableInlineEdit(div, note);
-        });
-
-        if (note.pinned) div.classList.add("pinned");
-
         fragment.appendChild(div);
     });
 
     container.appendChild(fragment);
+    window.isLoadingNotes = false;
 }
 
 // ===== DRAG & DROP =====
-let draggedNoteId = null;
-
 document.addEventListener("dragstart", (e) => {
     const note = e.target.closest(".note");
     if (!note) return;
@@ -319,7 +378,9 @@ function applyFilters() {
 
     if (!baseNotes.length) {
         const container = document.getElementById("notesContainer");
-        container?.replaceChildren();
+        if (!window.isLoadingNotes) {
+            container?.replaceChildren();
+        }
 
         if (isTrashPage()) return showEmpty("Trash is empty 🗑️");
         if (isArchivePage()) return showEmpty("No archived notes 📦");
@@ -425,4 +486,63 @@ function showToast(message, type = "info", duration = 2500) {
             setTimeout(() => toast.remove(), 300);
         }, duration);
     }
+}
+
+document.addEventListener("click", (e) => {
+    const activeNote = document.querySelector(".note.editing");
+    if (!activeNote) return;
+
+    const clickedInside = activeNote.contains(e.target);
+    const clickedButton = e.target.closest("button");
+
+    if (clickedInside || clickedButton) return;
+
+    // commit edit
+    const saveBtn = activeNote.querySelector(".save-btn");
+
+    if (saveBtn) {
+        saveBtn.click();
+    } else {
+        // fallback: trigger blur save
+        const editable = activeNote.querySelector("[contenteditable='true']");
+        if (editable) editable.blur();
+    }
+
+    activeNote.classList.remove("editing");
+});
+
+// ===== SHOW POPUP =====
+function showConfirmPopup(message) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay";
+
+        overlay.innerHTML = `
+            <div class="modal">
+                <p>${message}</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel">Cancel</button>
+                    <button class="btn-confirm">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const cancelBtn = overlay.querySelector(".btn-cancel");
+        const confirmBtn = overlay.querySelector(".btn-confirm");
+
+        function cleanup(result) {
+            overlay.remove();
+            resolve(result);
+        }
+
+        cancelBtn.onclick = () => cleanup(false);
+        confirmBtn.onclick = () => cleanup(true);
+
+        // optional: click outside to cancel
+        overlay.onclick = (e) => {
+            if (e.target === overlay) cleanup(false);
+        };
+    });
 }
