@@ -32,6 +32,11 @@
         <div id="notesContainer" class="notes-grid"></div>
     </div>
 
+    <script>
+        window.isTrashPage = true;
+        window.isArchivePage = false;
+    </script>
+
     <script src="js/api.js"></script>
     <script src="js/main/main-1-state.js"></script> <!-- state -->
     <script src="js/main/main-2-ui.js"></script> <!-- UI -->
@@ -40,9 +45,6 @@
     <script src="js/main/main-5-events.js"></script> <!-- events -->
 
     <script>
-        // 🔥 Tell main.js this is the trash page
-        window.isTrashPage = true;
-
         // 🔥 Load only trashed notes
         async function loadNotes() {
             let notes = await apiRequest("/notes/trash");
@@ -57,7 +59,7 @@
         }
 
         async function permanentDelete(id) {
-            if (!confirm("Permanently delete this note?")) return;
+            if (!(await showConfirmPopup("Permanently delete this note?"))) return;
             await apiRequest(`/notes/permanent/${id}`, "DELETE");
             await loadNotes();
         }
