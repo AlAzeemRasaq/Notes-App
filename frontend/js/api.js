@@ -261,3 +261,12 @@ async function bulkUpdateTags(note_ids, tags) {
 async function getNotesPaginated(page = 1, limit = 20) {
     return await apiRequest(`/notes?page=${page}&limit=${limit}`);
 }
+
+// EXPORT / IMPORT
+async function exportNotes() {
+    return apiRequest("/notes/export", "GET");
+}
+
+async function importNotes(data) {
+    return apiRequest("/notes/import", "POST", data);
+}
