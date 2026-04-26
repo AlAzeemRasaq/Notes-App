@@ -529,3 +529,48 @@ def bulk_update_tags():
     )
 
     return jsonify({"message": "Tags updated"}), 200
+
+# ================= EXPORT / IMPORT =================
+@notes_bp.route("/export", methods=["GET"])
+@jwt_required()
+def export_notes():
+    user_id = str(get_jwt_identity())
+
+    notes = list(mongo.db.notes.find({"user_id": user_id}))
+
+    # Convert ObjectId → string
+    for note in notes:
+        note["_id"] = str(note["_id"])
+
+    return jsonify(notes), 200
+
+@notes_bp.route("/import", methods=["POST"])
+@jwt_required()
+def import_notes():
+    user_id = str(get_jwt_identity())
+    data = request.get_json()
+
+    if not isinstance(data, list):
+        return jsonify({"error": "Invalid format"}), 400
+
+    new_notes = []
+
+    for note in data:
+        new_note = {
+            "user_id": user_id,
+            "title": note.get("title", ""),
+            "content": note.get("content", ""),
+            "tags": note.get("tags", []),
+            "pinned": note.get("pinned", False),
+            "archived": note.get("archived", False),
+            "trashed": False,  # safety
+            "color": note.get("color", "#ffffff"),
+            "created_at": note.get("created_at"),
+            "updated_at": note.get("updated_at")
+        }
+        new_notes.append(new_note)
+
+    if new_notes:
+        mongo.db.notes.insert_many(new_notes)
+
+    return jsonify({"message": "Import successful"}), 201
