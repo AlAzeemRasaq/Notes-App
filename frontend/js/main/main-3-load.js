@@ -1,3 +1,5 @@
+console.log("showLoading:", typeof showLoading);
+
 // ===== LOAD NOTES =====
 async function loadNotes(search = "") {
     const requestId = ++currentRequestId;
