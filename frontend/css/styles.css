@@ -264,12 +264,21 @@ body.light {
     color: #111;
 }
 
-body.light .note {
+body.light .note, body.light .searchInput, body.light .quickNoteInput {
     background: white;
 }
 
-body.light .sidebar {
+body.light .sidebar, body.light .topbar, 
+body.light .create-note, body.light .quick-note-bar {
     background: #ddd;
+}
+
+body.light h2, body.light a {
+    color: #111;
+}
+
+body.light .sidebar nav a:hover {
+    background: #ccc;
 }
 
 /* ===== CHECKBOX ===== */
