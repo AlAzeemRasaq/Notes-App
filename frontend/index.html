@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notes App</title>
     <link rel="stylesheet" href="css/styles.css">
-    
+
     <!-- 🆕 Inline editing uses .editing class (styled in CSS) -->
 </head>
 
@@ -75,10 +76,6 @@
             </div>
 
             <button id="addNoteBtn">Add Note</button>
-
-            <small class="edit-hint">
-                Tip: Double-click a note to edit ✏️
-            </small>
         </div>
 
         <!-- ⚡ CONTROLS BAR (NEW STRUCTURE) -->
@@ -86,11 +83,7 @@
 
             <!-- ⚡ QUICK NOTE BAR -->
             <div class="quick-note-bar">
-                <input 
-                    type="text" 
-                    id="quickNoteInput" 
-                    placeholder="Write a quick note and press Enter..."
-                />
+                <input type="text" id="quickNoteInput" placeholder="Write a quick note and press Enter..." />
             </div>
 
             <!-- 🔥 SELECT MODE BUTTON -->
@@ -160,65 +153,109 @@
 
     <!-- Rich Text + Drag & Drop -->
     <script>
+        // Applies text formatting commands using deprecated execCommand API
+        // NOTE: still works in most browsers but is considered legacy
         function formatText(command) {
             if (command === 'createLink') {
                 const url = prompt('Enter the URL');
-                if (url) document.execCommand(command, false, url.startsWith('http') ? url : 'https://' + url);
+
+                if (url) {
+                    // auto-prepend protocol if missing for usability
+                    document.execCommand(
+                        command,
+                        false,
+                        url.startsWith('http') ? url : 'https://' + url
+                    );
+                }
             } else {
                 document.execCommand(command, false, null);
             }
         }
 
-        function triggerImageUpload() { document.getElementById('imageUploader').click(); }
+        // Triggers hidden file input for image upload button
+        function triggerImageUpload() {
+            document.getElementById('imageUploader').click();
+        }
 
+        // Handles image upload via file picker
         document.getElementById('imageUploader').addEventListener('change', function () {
             const file = this.files[0];
             if (!file) return;
+
             const reader = new FileReader();
+
+            // Convert image file to base64 for inline insertion
             reader.onload = e => {
                 const img = document.createElement('img');
                 img.src = e.target.result;
+
+                // Inserts image directly into rich text editor
                 document.getElementById('noteContent').appendChild(img);
             };
+
             reader.readAsDataURL(file);
         });
 
+        // Inserts embedded iframe content (e.g. YouTube, maps, etc.)
         function insertEmbed() {
             const embedCode = prompt('Paste embed HTML (iframe)');
             if (!embedCode) return;
+
+            // Parse HTML string safely before injecting
             const parser = new DOMParser();
             const doc = parser.parseFromString(embedCode, 'text/html');
+
             const iframe = doc.querySelector('iframe');
-            if (iframe) document.getElementById('noteContent').appendChild(iframe);
-            else alert('Invalid embed code');
+
+            if (iframe) {
+                document.getElementById('noteContent').appendChild(iframe);
+            } else {
+                alert('Invalid embed code'); // prevents invalid HTML injection
+            }
         }
 
         const editor = document.getElementById('noteContent');
+
+        // Enable drag-and-drop image support in editor
         editor.addEventListener('dragover', e => e.preventDefault());
+
         editor.addEventListener('drop', e => {
             e.preventDefault();
+
             const file = e.dataTransfer.files[0];
+
+            // only accept image files for security + consistency
             if (!file || !file.type.startsWith('image/')) return;
+
             const reader = new FileReader();
+
             reader.onload = e => {
                 const img = document.createElement('img');
                 img.src = e.target.result;
+
                 editor.appendChild(img);
             };
+
             reader.readAsDataURL(file);
         });
 
+        // Handles paste events (supports pasted images from clipboard)
         editor.addEventListener('paste', e => {
             const items = e.clipboardData.items;
+
             for (let i = 0; i < items.length; i++) {
                 if (!items[i].type.startsWith('image/')) continue;
+
                 const file = items[i].getAsFile();
                 const reader = new FileReader();
+
                 reader.onload = e => {
                     const img = document.createElement('img');
                     img.src = e.target.result;
+
                     editor.appendChild(img);
                 };
+
                 reader.readAsDataURL(file);
             }
         });
@@ -254,4 +291,5 @@
         </div>
     </div>
 </body>
+
 </html>
