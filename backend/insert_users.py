@@ -10,7 +10,9 @@ with app.app_context():
 
     # Insert into MongoDB
     for user in users:
+        # Hash the password before storing
         hashed_pw = bcrypt.generate_password_hash(user["password"]).decode("utf-8")
+        # Insert new user into the database
         mongo.db.users.insert_one({
             "username": user["username"],
             "email": user["email"],
