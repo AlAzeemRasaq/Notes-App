@@ -1,0 +1,5 @@
+test 1: with farouq, my cousin in navan (technical):
+i sent the github link to him, he tested the project on both his lab pc and his home pc. he said the project was fine. from creating notes to storing them in mongodb, to pinning, editing, and deleting. but he said that there is a timeout bug in my project, which i have acknowledged. i have also experienced this bug. there was a bit of lag/latency between actions though, maybe due to hardware constraints. nonetheless, everything else was working when he tested it.
+
+test 2: with my younger sister (non-technical):
+i invited her to my room to test my project, and she really liked it! she surprisingly gave it a 10/10, even though i don't really see it that way. she was able to create, pin, edit and delete notes, but there were still a few bugs to take note of. she was delighted the most at the fact that each notes can be coloured!
