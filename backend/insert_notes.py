@@ -3,14 +3,14 @@ from extensions import mongo
 from app import app
 from datetime import datetime
 
-
+# This script is used to insert notes from a JSON file into the MongoDB database.
 with app.app_context():
 
     with open("notes.json", "r") as f:
         notes = json.load(f)
 
     for note in notes:
-
+        # Insert each note into the "notes" collection in MongoDB
         mongo.db.notes.insert_one({
             "user_id": note["user_id"],
             "title": note["title"],
