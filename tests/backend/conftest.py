@@ -9,47 +9,53 @@ sys.path.append(
     )
 )
 
-from app import app
+from app import create_app
 from extensions import mongo
 
 
 # ================= APP =================
 @pytest.fixture
-def client():
+def app():
     """
-    Fully isolated Flask test client with proper app context.
+    Create a fresh app instance for testing with isolated config.
     """
 
-    app.config.update(
-        TESTING=True,
-        JWT_SECRET_KEY="test-secret",
-        MONGO_URI="mongodb://localhost:27017/testdb"
-    )
+    app = create_app({
+        "TESTING": True,
+        "JWT_SECRET_KEY": "test-secret",
+        "MONGO_URI": "mongodb://localhost:27017/notes_app_test"
+    })
 
-    # 🔥 FORCE rebind extensions properly
-    with app.app_context():
-        from extensions import mongo
-
-        mongo.cx = None  # reset connection
-        mongo.db = mongo.cx["testdb"] if mongo.cx else mongo.db
-
-        yield app.test_client()
+    return app
 
 
-# ================= CLEAN DB (FIXED PROPERLY) =================
+# ================= CLIENT =================
+@pytest.fixture
+def client(app):
+    """
+    Flask test client bound to the test app.
+    """
+    with app.test_client() as client:
+        yield client
+
+
+# ================= CLEAN DB =================
 @pytest.fixture(autouse=True)
 def clean_db(app):
     """
-    Clean DB after each test safely.
+    Clean DB BEFORE each test (safe).
     """
 
-    yield
-
     with app.app_context():
-        try:
-            mongo.db.notes.delete_many({})
-        except Exception:
-            pass
+        db_name = mongo.db.name
+
+        # 🛑 SAFETY GUARD — NEVER DELETE REAL DATA
+        assert "test" in db_name, f"Refusing to wipe non-test DB: {db_name}"
+
+        mongo.db.notes.delete_many({})
+        mongo.db.users.delete_many({})
+
+    yield
 
 
 # ================= AUTH HEADERS =================
@@ -72,26 +78,16 @@ def auth_headers(client):
         "password": "password123"
     })
 
-    # FIX: login may fail if registration fails, so check status first
     assert login.status_code == 200, login.get_data(as_text=True)
-    # FIX: be flexible with token key naming
+
     data = login.get_json()
-    # FIX: check for both possible keys and assert at least one exists
-    token = data.get("access_token")
-    # assert token exists in either key
-    assert token, data
-    # return headers with token
+    assert data is not None, "No JSON returned from login"
+
+    # 🔥 FIX: accept real backend response
+    token = data.get("access_token") or data.get("token")
+    assert token is not None, data
+
     return {"Authorization": f"Bearer {token}"}
-
-
-# ================= TEST USER =================
-@pytest.fixture
-def test_user():
-    return {
-        "username": "testuser",
-        "email": "test@example.com",
-        "password": "password123"
-    }
 
 
 # ================= SAMPLE NOTE =================
