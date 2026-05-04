@@ -4,6 +4,7 @@ async function register() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
+  // basic client-side validation to avoid unnecessary API calls
   if (!username || !email || !password) {
     alert("Please fill in all fields.");
     return;
@@ -18,6 +19,7 @@ async function register() {
 
     alert(data.message || "Registration successful");
 
+    // only redirect if backend confirms successful registration
     if (data.message === "User registered successfully") {
       window.location.href = "login.html";
     }
@@ -33,6 +35,7 @@ async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
+  // prevent empty auth requests
   if (!email || !password) {
     alert("Please fill in all fields.");
     return;
@@ -46,6 +49,7 @@ async function login() {
 
     console.log("[LOGIN RESPONSE]", data);
 
+    // backend may return token under different keys depending on implementation
     const token = data.access_token || data.token;
 
     if (!token) {
@@ -53,9 +57,12 @@ async function login() {
       return;
     }
 
+    // persist session token for authenticated requests
     localStorage.setItem("token", token);
 
     alert("Login successful!");
+
+    // small delay for UX smoothness before redirect
     setTimeout(() => {
       window.location.href = "index.html";
     }, 300);
@@ -68,9 +75,12 @@ async function login() {
 
 // LOGOUT
 async function logout() {
+  // client-side logout (no backend session invalidation in this design)
   localStorage.removeItem("token");
 
   await showConfirmPopup("Logged out successfully (OK to continue)");
+
+  // redirect to auth entry point
   window.location.href = "login.html";
 }
 
@@ -80,17 +90,21 @@ function updateAuthUI() {
   const registerBtn = document.getElementById("registerBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
+  // guard against missing DOM elements on some pages
   if (!loginBtn || !registerBtn || !logoutBtn) return;
 
   const token = localStorage.getItem("token");
 
+  // toggle UI based on authentication state
   loginBtn.classList.toggle("hidden", !!token);
   registerBtn.classList.toggle("hidden", !!token);
   logoutBtn.classList.toggle("hidden", !token);
 
+  // navigation bindings
   loginBtn.onclick = () => window.location.href = "login.html";
   registerBtn.onclick = () => window.location.href = "register.html";
   logoutBtn.onclick = logout;
 }
 
+// initialize auth UI state on load
 updateAuthUI();
