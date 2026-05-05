@@ -194,24 +194,6 @@
             reader.readAsDataURL(file);
         });
 
-        // Inserts embedded iframe content (e.g. YouTube, maps, etc.)
-        function insertEmbed() {
-            const embedCode = prompt('Paste embed HTML (iframe)');
-            if (!embedCode) return;
-
-            // Parse HTML string safely before injecting
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(embedCode, 'text/html');
-
-            const iframe = doc.querySelector('iframe');
-
-            if (iframe) {
-                document.getElementById('noteContent').appendChild(iframe);
-            } else {
-                alert('Invalid embed code'); // prevents invalid HTML injection
-            }
-        }
-
         const editor = document.getElementById('noteContent');
 
         // Enable drag-and-drop image support in editor
